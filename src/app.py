@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 
 from src.config import API_MODEL
 from src.model import classify_statement
-from src.api_service import enrich_classification, explain_result
+from src.api_service import analyze_root_cause, compare_results, judge_statement
 
 
 def create_app() -> FastAPI:
@@ -40,25 +40,43 @@ def create_app() -> FastAPI:
                 "error": f"Classification failed: {exc}",
             })
 
-        # Step 2: API enriches with text (label, reasoning, key indicators)
+        # Step 2: Stage 1 — LLM independently judges the statement
         try:
-            enriched = enrich_classification(statement, raw_result)
-        except Exception:
-            enriched = {}
+            llm_result = judge_statement(statement)
+        except Exception as exc:
+            return templates.TemplateResponse(request, "index.html", {
+                "model_name": API_MODEL,
+                "statement": statement,
+                "error": f"LLM analysis failed: {exc}",
+            })
 
-        classification: dict[str, object] = {**raw_result, **enriched}
-
-        # Step 3: API generates user-friendly explanation
+        # Step 3: Stage 2 — LLM compares its verdict with ML result
         try:
-            explanation = explain_result(statement, classification)
+            comparison = compare_results(statement, raw_result, llm_result)
         except Exception:
-            explanation = None
+            comparison = {}
+
+        agreement = comparison.get("agreement", True)
+
+        # Step 4: Stage 3 — Root cause analysis
+        try:
+            analysis = analyze_root_cause(statement, raw_result, llm_result, bool(agreement))
+        except Exception:
+            analysis = {}
 
         return templates.TemplateResponse(request, "index.html", {
             "model_name": API_MODEL,
             "statement": statement,
-            "classification": classification,
-            "explanation": explanation,
+            "ml_is_rumor": raw_result["is_rumor"],
+            "ml_confidence": raw_result["confidence"],
+            "llm_label": llm_result.get("label", "Unknown"),
+            "llm_is_rumor": llm_result.get("is_rumor", -1),
+            "agreement": agreement,
+            "llm_reasoning": llm_result.get("reasoning", ""),
+            "supporting_indicators": llm_result.get("supporting_indicators", []),
+            "comparison_summary": comparison.get("comparison_summary", ""),
+            "root_cause_analysis": analysis.get("root_cause_analysis", ""),
+            "key_indicators": analysis.get("key_indicators", []),
         })
 
     return app

@@ -17,6 +17,8 @@
             --rumor-bg: #fce4e4;
             --not-rumor: #2a9d8f;
             --not-rumor-bg: #e6f4f1;
+            --warn: #e9c46a;
+            --warn-bg: #fdf6e3;
             --radius: 12px;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -58,34 +60,74 @@
         .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
         .btn-secondary:hover { background: var(--border); }
 
-        .result-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+        /* Three-column verdict header */
+        .verdict-row {
+            display: flex; gap: 1rem; margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        .verdict-col {
+            flex: 1; padding: 1.25rem 0.75rem;
+            border: 1px solid var(--border); border-radius: var(--radius);
+            background: var(--bg);
+        }
+        .verdict-col .col-label {
+            font-size: 0.8rem; text-transform: uppercase;
+            letter-spacing: 0.05em; color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
         .badge {
-            display: inline-block; padding: 0.4rem 1.2rem; border-radius: 20px;
-            font-size: 1.1rem; font-weight: 700;
+            display: inline-block; padding: 0.35rem 1rem; border-radius: 20px;
+            font-size: 1rem; font-weight: 700;
         }
         .badge-rumor { background: var(--rumor-bg); color: var(--rumor); }
         .badge-not { background: var(--not-rumor-bg); color: var(--not-rumor); }
-        .confidence { margin-left: auto; text-align: right; }
-        .confidence .value { font-size: 1.5rem; font-weight: 700; }
-        .confidence .label { color: var(--text-secondary); font-size: 0.85rem; }
+        .warn-icon {
+            display: inline-block; color: var(--warn); font-size: 1.3rem;
+            margin-left: 0.35rem; vertical-align: middle;
+        }
+        .confidence-value { font-size: 1.5rem; font-weight: 700; }
+        .confidence-label { color: var(--text-secondary); font-size: 0.8rem; }
         .meter {
             height: 8px; background: var(--border); border-radius: 4px;
-            margin-top: 0.3rem; overflow: hidden;
+            margin-top: 0.5rem; overflow: hidden;
         }
         .meter-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
         .meter-rumor { background: var(--rumor); }
         .meter-not { background: var(--not-rumor); }
 
-        section { margin-bottom: 1.5rem; }
-        section h3 {
-            font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem;
-            padding-bottom: 0.4rem; border-bottom: 1px solid var(--border);
+        /* Two-column content row */
+        .content-row {
+            display: flex; gap: 1.5rem;
         }
-        .reasoning-content { background: #f1f3f5; padding: 1rem; border-radius: 8px; font-size: 0.9rem; white-space: pre-wrap; }
+        .content-col {
+            flex: 1; min-width: 0;
+        }
+        .content-col h2 {
+            font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem;
+            padding-bottom: 0.5rem; border-bottom: 2px solid var(--border);
+        }
+        .content-col section { margin-bottom: 1.5rem; }
+        .content-col section:last-child { margin-bottom: 0; }
+        .content-col section h3 {
+            font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;
+            padding-bottom: 0.35rem; border-bottom: 1px solid var(--border);
+        }
         .indicators { list-style: none; padding: 0; }
         .indicators li { padding: 0.35rem 0; }
         .indicators li::before { content: "▸ "; color: var(--accent); }
-        .explanation { background: #f8f9ff; border: 1px solid #d7d9f0; padding: 1rem; border-radius: 8px; }
+
+        .agreement-banner {
+            padding: 0.6rem 1rem; border-radius: 8px;
+            font-size: 0.9rem; font-weight: 600; margin-bottom: 1.5rem;
+        }
+        .agreement-converge { background: var(--not-rumor-bg); color: var(--not-rumor); }
+        .agreement-diverge { background: var(--warn-bg); color: #b8860b; }
+
+        @media (max-width: 600px) {
+            .content-row { flex-direction: column; }
+            .verdict-row { flex-direction: column; }
+        }
+
         .footer { text-align: center; color: var(--text-secondary); font-size: 0.85rem; margin-top: 2rem; }
         .spinner {
             display: inline-block; width: 20px; height: 20px; border: 3px solid var(--border);
@@ -123,54 +165,102 @@
         <div class="error">{{ error }}</div>
         {% endif %}
 
-        {% if classification %}
+        {% if ml_is_rumor is defined %}
         <div class="card">
-            <div class="result-header">
-                <span class="badge {{ 'badge-rumor' if classification.is_rumor else 'badge-not' }}">
-                    {{ classification.label }}
-                </span>
-                <div class="confidence">
-                    <div class="value">{{ "%.1f" | format(classification.confidence * 100) }}%</div>
-                    <div class="label">Confidence</div>
+            <!-- Agreement banner -->
+            {% if agreement %}
+            <div class="agreement-banner agreement-converge">
+                The ML model and LLM analysis agree on this verdict.
+            </div>
+            {% else %}
+            <div class="agreement-banner agreement-diverge">
+                The ML model and LLM analysis disagree on this verdict — see comparison below.
+            </div>
+            {% endif %}
+
+            <!-- Three-column verdict header -->
+            <div class="verdict-row">
+                <div class="verdict-col">
+                    <div class="col-label">ML Verdict</div>
+                    <span class="badge {{ 'badge-rumor' if ml_is_rumor else 'badge-not' }}">
+                        {{ 'RUMOR' if ml_is_rumor else 'NOT RUMOR' }}
+                    </span>
+                </div>
+                <div class="verdict-col">
+                    <div class="col-label">LLM Verdict</div>
+                    <span class="badge {{ 'badge-rumor' if llm_is_rumor else 'badge-not' }}">
+                        {{ llm_label }}
+                    </span>
+                    {% if not agreement %}
+                    <span class="warn-icon">&#9888;</span>
+                    {% endif %}
+                </div>
+                <div class="verdict-col">
+                    <div class="col-label">Confidence</div>
+                    <div class="confidence-value">{{ "%.0f" | format(ml_confidence * 100) }}%</div>
+                    <div class="meter">
+                        <div class="meter-fill {{ 'meter-rumor' if ml_is_rumor else 'meter-not' }}"
+                             style="width: {{ ml_confidence * 100 }}%"></div>
+                    </div>
                 </div>
             </div>
-            <div class="meter">
-                <div class="meter-fill {{ 'meter-rumor' if classification.is_rumor else 'meter-not' }}"
-                     style="width: {{ classification.confidence * 100 }}%"></div>
+
+            <!-- Two-column content -->
+            <div class="content-row">
+                <!-- Left column: LLM Analysis -->
+                <div class="content-col">
+                    <h2>LLM Analysis</h2>
+
+                    {% if llm_reasoning %}
+                    <section>
+                        <h3>Why This Verdict</h3>
+                        <p>{{ llm_reasoning }}</p>
+                    </section>
+                    {% endif %}
+
+                    {% if supporting_indicators %}
+                    <section>
+                        <h3>Supporting Indicators</h3>
+                        <ul class="indicators">
+                            {% for item in supporting_indicators %}
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                    {% endif %}
+                </div>
+
+                <!-- Right column: Comparison -->
+                <div class="content-col">
+                    <h2>Comparison</h2>
+
+                    {% if comparison_summary %}
+                    <section>
+                        <h3>Comparison Summary</h3>
+                        <p>{{ comparison_summary }}</p>
+                    </section>
+                    {% endif %}
+
+                    {% if root_cause_analysis %}
+                    <section>
+                        <h3>Analysis</h3>
+                        <p>{{ root_cause_analysis }}</p>
+                    </section>
+                    {% endif %}
+
+                    {% if key_indicators %}
+                    <section>
+                        <h3>Key Indicators</h3>
+                        <ul class="indicators">
+                            {% for item in key_indicators %}
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                    {% endif %}
+                </div>
             </div>
-
-            {% if classification.reasoning_content %}
-            <section>
-                <h3>Model's Chain of Thought</h3>
-                <div class="reasoning-content">{{ classification.reasoning_content }}</div>
-            </section>
-            {% endif %}
-
-            <section>
-                <h3>Analysis</h3>
-                <p>{{ classification.reasoning }}</p>
-            </section>
-
-            {% if classification.key_indicators %}
-            <section>
-                <h3>Key Indicators</h3>
-                <ul class="indicators">
-                    {% for item in classification.key_indicators %}
-                    <li>{{ item }}</li>
-                    {% endfor %}
-                </ul>
-            </section>
-            {% endif %}
         </div>
-
-        {% if explanation %}
-        <div class="card">
-            <section>
-                <h3>Detailed Explanation</h3>
-                <div class="explanation">{{ explanation | replace('\n', '<br>') }}</div>
-            </section>
-        </div>
-        {% endif %}
         {% endif %}
 
         <div class="footer">
