@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rumor Detection System</title>
+    <style>
+        :root {
+            --bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --text: #212529;
+            --text-secondary: #6c757d;
+            --border: #dee2e6;
+            --accent: #4361ee;
+            --accent-hover: #3a56d4;
+            --rumor: #e63946;
+            --rumor-bg: #fce4e4;
+            --not-rumor: #2a9d8f;
+            --not-rumor-bg: #e6f4f1;
+            --radius: 12px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        .container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+        header { text-align: center; margin-bottom: 2rem; }
+        header h1 { font-size: 1.8rem; font-weight: 700; }
+        header p { color: var(--text-secondary); margin-top: 0.25rem; }
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        label { display: block; font-weight: 600; margin-bottom: 0.5rem; }
+        textarea {
+            width: 100%; min-height: 120px; padding: 0.75rem;
+            border: 1px solid var(--border); border-radius: 8px;
+            font-size: 1rem; font-family: inherit; resize: vertical;
+            transition: border-color 0.2s;
+        }
+        textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(67,97,238,0.15); }
+        .btn-row { display: flex; gap: 0.75rem; margin-top: 1rem; }
+        button {
+            padding: 0.7rem 1.8rem; border: none; border-radius: 8px;
+            font-size: 0.95rem; font-weight: 600; cursor: pointer;
+            transition: background 0.2s, opacity 0.2s;
+        }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: var(--border); }
+
+        .result-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+        .badge {
+            display: inline-block; padding: 0.4rem 1.2rem; border-radius: 20px;
+            font-size: 1.1rem; font-weight: 700;
+        }
+        .badge-rumor { background: var(--rumor-bg); color: var(--rumor); }
+        .badge-not { background: var(--not-rumor-bg); color: var(--not-rumor); }
+        .confidence { margin-left: auto; text-align: right; }
+        .confidence .value { font-size: 1.5rem; font-weight: 700; }
+        .confidence .label { color: var(--text-secondary); font-size: 0.85rem; }
+        .meter {
+            height: 8px; background: var(--border); border-radius: 4px;
+            margin-top: 0.3rem; overflow: hidden;
+        }
+        .meter-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
+        .meter-rumor { background: var(--rumor); }
+        .meter-not { background: var(--not-rumor); }
+
+        section { margin-bottom: 1.5rem; }
+        section h3 {
+            font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem;
+            padding-bottom: 0.4rem; border-bottom: 1px solid var(--border);
+        }
+        .reasoning-content { background: #f1f3f5; padding: 1rem; border-radius: 8px; font-size: 0.9rem; white-space: pre-wrap; }
+        .indicators { list-style: none; padding: 0; }
+        .indicators li { padding: 0.35rem 0; }
+        .indicators li::before { content: "▸ "; color: var(--accent); }
+        .explanation { background: #f8f9ff; border: 1px solid #d7d9f0; padding: 1rem; border-radius: 8px; }
+        .footer { text-align: center; color: var(--text-secondary); font-size: 0.85rem; margin-top: 2rem; }
+        .spinner {
+            display: inline-block; width: 20px; height: 20px; border: 3px solid var(--border);
+            border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .error { background: #fff0f0; border: 1px solid #fcc; color: var(--rumor); padding: 1rem; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Rumor Detection System</h1>
+            <h3>Course Project of NIS4307 Introduction to AI, Shanghai Jiao Tong University</h3>
+            <p>Authors: </p>
+            <p>Powered by {{ model_name }}</p>
+        </header>
+
+        <div class="card">
+            <form method="POST" action="/analyze" id="analyze-form">
+                <label for="statement">Enter a statement to analyze</label>
+                <textarea
+                    id="statement" name="statement"
+                    placeholder="e.g. 'A new study claims drinking lemon water every morning cures all types of cancer...'"
+                    required
+                >{{ statement or '' }}</textarea>
+                <div class="btn-row">
+                    <button type="submit" class="btn-primary" id="submit-btn">Analyze Statement</button>
+                    <button type="button" class="btn-secondary" onclick="window.location='/'">Clear</button>
+                </div>
+            </form>
+        </div>
+
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+
+        {% if classification %}
+        <div class="card">
+            <div class="result-header">
+                <span class="badge {{ 'badge-rumor' if classification.is_rumor else 'badge-not' }}">
+                    {{ classification.label }}
+                </span>
+                <div class="confidence">
+                    <div class="value">{{ "%.1f" | format(classification.confidence * 100) }}%</div>
+                    <div class="label">Confidence</div>
+                </div>
+            </div>
+            <div class="meter">
+                <div class="meter-fill {{ 'meter-rumor' if classification.is_rumor else 'meter-not' }}"
+                     style="width: {{ classification.confidence * 100 }}%"></div>
+            </div>
+
+            {% if classification.reasoning_content %}
+            <section>
+                <h3>Model's Chain of Thought</h3>
+                <div class="reasoning-content">{{ classification.reasoning_content }}</div>
+            </section>
+            {% endif %}
+
+            <section>
+                <h3>Analysis</h3>
+                <p>{{ classification.reasoning }}</p>
+            </section>
+
+            {% if classification.key_indicators %}
+            <section>
+                <h3>Key Indicators</h3>
+                <ul class="indicators">
+                    {% for item in classification.key_indicators %}
+                    <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endif %}
+        </div>
+
+        {% if explanation %}
+        <div class="card">
+            <section>
+                <h3>Detailed Explanation</h3>
+                <div class="explanation">{{ explanation | replace('\n', '<br>') }}</div>
+            </section>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <div class="footer">
+            AI-generated analysis may contain errors. Always verify against authoritative sources.
+        </div>
+    </div>
+    <script>
+        document.getElementById('analyze-form')?.addEventListener('submit', function() {
+            var btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Analyzing…';
+        });
+    </script>
+</body>
+</html>
