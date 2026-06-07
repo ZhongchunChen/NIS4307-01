@@ -1,0 +1,10 @@
+name: intro2ai
+channels:
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - -r requirements.txt
+variables:
+  PYTHONNOUSERSITE: "1"

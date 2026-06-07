@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "intro2ai-bertweet"
+version = "0.1.0"
+description = "BERTweet binary classifier for short tweet text."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "emoji>=2.12,<3",
+  "matplotlib>=3.8,<4",
+  "numpy>=1.26,<3",
+  "pandas>=2.1,<3",
+  "PyYAML>=6.0,<7",
+  "scikit-learn>=1.4,<2",
+  "torch>=2.3,<3",
+  "tqdm>=4.66,<5",
+  "transformers>=4.44,<5",
+]
+
+[project.scripts]
+bertweet-train = "src.train:main"
+bertweet-evaluate = "src.evaluate:main"
+bertweet-predict = "src.predict:main"
+bertweet-plot-history = "src.plot_history:main"
+
+[tool.setuptools.packages.find]
+include = ["src*"]

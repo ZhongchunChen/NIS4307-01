@@ -554,3 +554,6 @@ TSWLatexianTemp*
 #*Notes.bib
 
 .env
+checkpoints/
+datasets/
+*.py[cod]
