@@ -72,6 +72,15 @@ Step 4: analyze_root_cause(statement, ml, llm, agreement)  ← LLM Stage 3（根
 
 ### 1. 安装依赖
 
+使用 Conda 安装：
+
+```bash
+conda env create -f environment.yml
+conda activate intro2ai
+```
+
+或直接使用 pip：
+
 ```bash
 pip install -r requirements.txt
 ```
