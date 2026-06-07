@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rumor Detection System</title>
+    <style>
+        :root {
+            --bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --text: #212529;
+            --text-secondary: #6c757d;
+            --border: #dee2e6;
+            --accent: #4361ee;
+            --accent-hover: #3a56d4;
+            --rumor: #e63946;
+            --rumor-bg: #fce4e4;
+            --not-rumor: #2a9d8f;
+            --not-rumor-bg: #e6f4f1;
+            --warn: #e9c46a;
+            --warn-bg: #fdf6e3;
+            --radius: 12px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        .container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+        header { text-align: center; margin-bottom: 2rem; }
+        header h1 { font-size: 1.8rem; font-weight: 700; }
+        header p { color: var(--text-secondary); margin-top: 0.25rem; }
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        label { display: block; font-weight: 600; margin-bottom: 0.5rem; }
+        textarea {
+            width: 100%; min-height: 120px; padding: 0.75rem;
+            border: 1px solid var(--border); border-radius: 8px;
+            font-size: 1rem; font-family: inherit; resize: vertical;
+            transition: border-color 0.2s;
+        }
+        textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(67,97,238,0.15); }
+        .btn-row { display: flex; gap: 0.75rem; margin-top: 1rem; }
+        button {
+            padding: 0.7rem 1.8rem; border: none; border-radius: 8px;
+            font-size: 0.95rem; font-weight: 600; cursor: pointer;
+            transition: background 0.2s, opacity 0.2s;
+        }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: var(--border); }
+
+        /* Three-column verdict header */
+        .verdict-row {
+            display: flex; gap: 1rem; margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        .verdict-col {
+            flex: 1; padding: 1.25rem 0.75rem;
+            border: 1px solid var(--border); border-radius: var(--radius);
+            background: var(--bg);
+        }
+        .verdict-col .col-label {
+            font-size: 0.8rem; text-transform: uppercase;
+            letter-spacing: 0.05em; color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+        .badge {
+            display: inline-block; padding: 0.35rem 1rem; border-radius: 20px;
+            font-size: 1rem; font-weight: 700;
+        }
+        .badge-rumor { background: var(--rumor-bg); color: var(--rumor); }
+        .badge-not { background: var(--not-rumor-bg); color: var(--not-rumor); }
+        .warn-icon {
+            display: inline-block; color: var(--warn); font-size: 1.3rem;
+            margin-left: 0.35rem; vertical-align: middle;
+        }
+        .confidence-value { font-size: 1.5rem; font-weight: 700; }
+        .confidence-label { color: var(--text-secondary); font-size: 0.8rem; }
+        .meter {
+            height: 8px; background: var(--border); border-radius: 4px;
+            margin-top: 0.5rem; overflow: hidden;
+        }
+        .meter-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
+        .meter-rumor { background: var(--rumor); }
+        .meter-not { background: var(--not-rumor); }
+
+        /* Two-column content row */
+        .content-row {
+            display: flex; gap: 1.5rem;
+        }
+        .content-col {
+            flex: 1; min-width: 0;
+        }
+        .content-col h2 {
+            font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem;
+            padding-bottom: 0.5rem; border-bottom: 2px solid var(--border);
+        }
+        .content-col section { margin-bottom: 1.5rem; }
+        .content-col section:last-child { margin-bottom: 0; }
+        .content-col section h3 {
+            font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;
+            padding-bottom: 0.35rem; border-bottom: 1px solid var(--border);
+        }
+        .indicators { list-style: none; padding: 0; }
+        .indicators li { padding: 0.35rem 0; }
+        .indicators li::before { content: "▸ "; color: var(--accent); }
+
+        .agreement-banner {
+            padding: 0.6rem 1rem; border-radius: 8px;
+            font-size: 0.9rem; font-weight: 600; margin-bottom: 1.5rem;
+        }
+        .agreement-converge { background: var(--not-rumor-bg); color: var(--not-rumor); }
+        .agreement-diverge { background: var(--warn-bg); color: #b8860b; }
+
+        @media (max-width: 600px) {
+            .content-row { flex-direction: column; }
+            .verdict-row { flex-direction: column; }
+        }
+
+        .footer { text-align: center; color: var(--text-secondary); font-size: 0.85rem; margin-top: 2rem; }
+        .spinner {
+            display: inline-block; width: 20px; height: 20px; border: 3px solid var(--border);
+            border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .error { background: #fff0f0; border: 1px solid #fcc; color: var(--rumor); padding: 1rem; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Rumor Detection System</h1>
+            <p>Powered by {{ model_name }}</p>
+        </header>
+
+        <div class="card">
+            <form method="POST" action="/analyze" id="analyze-form">
+                <label for="statement">Enter a statement to analyze</label>
+                <textarea
+                    id="statement" name="statement"
+                    placeholder="e.g. 'A new study claims drinking lemon water every morning cures all types of cancer...'"
+                    required
+                >{{ statement or '' }}</textarea>
+                <div class="btn-row">
+                    <button type="submit" class="btn-primary" id="submit-btn">Analyze Statement</button>
+                    <button type="button" class="btn-secondary" onclick="window.location='/'">Clear</button>
+                </div>
+            </form>
+        </div>
+
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+
+        {% if ml_is_rumor is defined %}
+        <div class="card">
+            <!-- Agreement banner -->
+            {% if agreement %}
+            <div class="agreement-banner agreement-converge">
+                The ML model and LLM analysis agree on this verdict.
+            </div>
+            {% else %}
+            <div class="agreement-banner agreement-diverge">
+                The ML model and LLM analysis disagree on this verdict — see comparison below.
+            </div>
+            {% endif %}
+
+            <!-- Three-column verdict header -->
+            <div class="verdict-row">
+                <div class="verdict-col">
+                    <div class="col-label">ML Verdict</div>
+                    <span class="badge {{ 'badge-rumor' if ml_is_rumor else 'badge-not' }}">
+                        {{ 'RUMOR' if ml_is_rumor else 'NOT RUMOR' }}
+                    </span>
+                </div>
+                <div class="verdict-col">
+                    <div class="col-label">LLM Verdict</div>
+                    <span class="badge {{ 'badge-rumor' if llm_is_rumor else 'badge-not' }}">
+                        {{ llm_label }}
+                    </span>
+                    {% if not agreement %}
+                    <span class="warn-icon">&#9888;</span>
+                    {% endif %}
+                </div>
+                <div class="verdict-col">
+                    <div class="col-label">Confidence</div>
+                    <div class="confidence-value">{{ "%.0f" | format(ml_confidence * 100) }}%</div>
+                    <div class="meter">
+                        <div class="meter-fill {{ 'meter-rumor' if ml_is_rumor else 'meter-not' }}"
+                             style="width: {{ ml_confidence * 100 }}%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Two-column content -->
+            <div class="content-row">
+                <!-- Left column: LLM Analysis -->
+                <div class="content-col">
+                    <h2>LLM Analysis</h2>
+
+                    {% if llm_reasoning %}
+                    <section>
+                        <h3>Why This Verdict</h3>
+                        <p>{{ llm_reasoning }}</p>
+                    </section>
+                    {% endif %}
+
+                    {% if supporting_indicators %}
+                    <section>
+                        <h3>Supporting Indicators</h3>
+                        <ul class="indicators">
+                            {% for item in supporting_indicators %}
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                    {% endif %}
+                </div>
+
+                <!-- Right column: Comparison -->
+                <div class="content-col">
+                    <h2>Comparison</h2>
+
+                    {% if comparison_summary %}
+                    <section>
+                        <h3>Comparison Summary</h3>
+                        <p>{{ comparison_summary }}</p>
+                    </section>
+                    {% endif %}
+
+                    {% if root_cause_analysis %}
+                    <section>
+                        <h3>Analysis</h3>
+                        <p>{{ root_cause_analysis }}</p>
+                    </section>
+                    {% endif %}
+
+                    {% if key_indicators %}
+                    <section>
+                        <h3>Key Indicators</h3>
+                        <ul class="indicators">
+                            {% for item in key_indicators %}
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="footer">
+            AI-generated analysis may contain errors. Always verify against authoritative sources.
+        </div>
+    </div>
+    <script>
+        document.getElementById('analyze-form')?.addEventListener('submit', function() {
+            var btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Analyzing…';
+        });
+    </script>
+</body>
+</html>
