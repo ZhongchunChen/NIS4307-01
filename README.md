@@ -1,342 +1,193 @@
-# BERTweet Binary Text Classifier
+# Rumor Detection System
+
+Course Project of NIS4307 *Introduction to Artificial Intelligence*, Shanghai Jiao Tong University.
+
+[中文文档](docs/README_CN.md)
 
 ## Overview
 
-This project fine-tunes `vinai/bertweet-base` for binary text classification.
-The input is a tweet-like English text, and the output label is `0` or `1`.
-
-The model uses only the `text` column as input. Columns such as `id` and `event`
-are not used by the classifier.
-
-## Model
-
-The model architecture is:
-
-```text
-raw text
-  -> BERTweet tokenizer
-  -> pretrained BERTweet base encoder
-  -> dropout
-  -> linear classification head
-  -> label 0 or 1
-```
-
-The training script uses `AutoModelForSequenceClassification`. It loads the
-pretrained BERTweet encoder and adds a binary classification head. During
-training, both the encoder and the classification head are fine-tuned.
-
-The original BERTweet base checkpoint is cached under:
-
-```text
-checkpoints/base/
-```
-
-The fine-tuned best model is saved under:
-
-```text
-checkpoints/bertweet/best_model/
-```
-
-Training logs, metrics, and plots are saved under:
-
-```text
-outputs/bertweet/
-```
+This project combines a **fine-tuned BERTweet model** with **multi-stage LLM analysis** to build an explainable rumor detection system. Given an English statement, the system independently classifies it with both a machine learning model and an LLM, compares the two verdicts, analyzes agreement or divergence, and presents the full analysis in a visual interface.
 
 ## Project Structure
 
-```text
-.
+```
+NIS4307-01/
+├── main.py                       # Unified entry point (train / serve)
+├── requirements.txt              # Python dependencies
+├── environment.yml               # Conda environment config
+├── .env                          # Environment variables (create locally)
+├── .example.env                  # Environment variable template
 ├── configs/
-│   └── bertweet.yaml          # training and model configuration
-├── datasets/
-│   ├── train.csv              # training set
-│   └── val.csv                # validation set
+│   └── bertweet.yaml             # Model and training configuration
 ├── checkpoints/
-│   ├── base/                  # cached pretrained BERTweet checkpoint
-│   └── bertweet/              # fine-tuned model checkpoints
-├── outputs/
-│   └── bertweet/              # metrics, logs, and training curves
-├── src/
-│   ├── config.py              # config loading
-│   ├── data.py                # dataset loading and cleaning
-│   ├── evaluate.py            # evaluation entry
-│   ├── metrics.py             # classification metrics
-│   ├── plot_history.py        # plot curves from history.json
-│   ├── predict.py             # single-text prediction entry
-│   ├── train.py               # training entry
-│   └── utils.py               # shared utilities
-├── pyproject.toml             # editable package and dependencies
-└── environment.yml            # optional Conda environment file
-```
-
-The CSV files must contain at least:
-
-```text
-text,label
-```
-
-## Environment Setup
-
-Create the Conda environment:
-
-```bash
-conda create -n intro2ai python=3.10 -y
-conda activate intro2ai
-```
-
-Prevent user-site packages from leaking into the Conda environment:
-
-```bash
-conda env config vars set PYTHONNOUSERSITE=1 -n intro2ai
-conda deactivate
-conda activate intro2ai
-```
-
-Install this project and its dependencies in editable mode:
-
-```bash
-cd /path/to/introuduction_to_ai
-python -m pip install -e .
-```
-
-Verify the environment:
-
-```bash
-python -m pip check
-python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
-```
-
-## Train
-
-Run training from the project root:
-
-```bash
-python src/train.py --config configs/bertweet.yaml
-```
-
-The first run may download `vinai/bertweet-base` from Hugging Face and save it
-to `checkpoints/base/`. Later runs will prefer the local cached checkpoint.
-
-Important output files:
-
-```text
-checkpoints/bertweet/best_model/
-outputs/bertweet/history.json
-outputs/bertweet/best_metrics.json
-outputs/bertweet/cleaning_report.json
-outputs/bertweet/plots/
-```
-
-## Evaluate
-
-Evaluate the best checkpoint:
-
-```bash
-python src/evaluate.py --config configs/bertweet.yaml
-```
-
-To evaluate a specific checkpoint:
-
-```bash
-python src/evaluate.py \
-  --config configs/bertweet.yaml \
-  --checkpoint checkpoints/bertweet/best_model
-```
-
-## Predict
-
-Predict one text:
-
-```bash
-python src/predict.py \
-  --config configs/bertweet.yaml \
-  --text "Example tweet text"
-```
-
-## Plot Curves
-
-Regenerate training curves from `outputs/bertweet/history.json`:
-
-```bash
-python src/plot_history.py --config configs/bertweet.yaml
-```
-
-Generated plots:
-
-```text
-outputs/bertweet/plots/loss_curve.png
-outputs/bertweet/plots/accuracy_curve.png
-outputs/bertweet/plots/macro_f1_curve.png
-outputs/bertweet/plots/grad_norm_curve.png
-```
-
----
-
-# BERTweet 二分类文本分类器
-
-## 项目简介
-
-本项目使用 `vinai/bertweet-base` 进行二分类文本分类微调。模型输入是一段英文短文本，输出标签为 `0` 或 `1`。
-
-模型只使用数据中的 `text` 列作为输入，不使用 `id`、`event` 等字段。
-
-## 模型结构
-
-模型结构如下：
-
-```text
-原始文本
-  -> BERTweet tokenizer
-  -> 预训练 BERTweet base encoder
-  -> dropout
-  -> 线性分类头
-  -> label 0 或 1
-```
-
-训练代码使用 `AutoModelForSequenceClassification`。它会加载预训练的 BERTweet encoder，并添加一个二分类分类头。训练时，encoder 和分类头都会一起微调。
-
-原始 BERTweet base checkpoint 缓存在：
-
-```text
-checkpoints/base/
-```
-
-微调得到的最佳模型保存在：
-
-```text
-checkpoints/bertweet/best_model/
-```
-
-训练日志、指标和曲线保存在：
-
-```text
-outputs/bertweet/
-```
-
-## 项目结构
-
-```text
-.
-├── configs/
-│   └── bertweet.yaml          # 模型与训练配置
+│   ├── base/                     # Cached pretrained BERTweet weights
+│   └── bertweet/best_model/      # Fine-tuned best model
+├── outputs/bertweet/             # Training metrics, plots, and reports
 ├── datasets/
-│   ├── train.csv              # 训练集
-│   └── val.csv                # 验证集
-├── checkpoints/
-│   ├── base/                  # 缓存的 BERTweet 预训练权重
-│   └── bertweet/              # 微调后的模型权重
-├── outputs/
-│   └── bertweet/              # 指标、日志和训练曲线
-├── src/
-│   ├── config.py              # 配置读取
-│   ├── data.py                # 数据读取与清洗
-│   ├── evaluate.py            # 评估入口
-│   ├── metrics.py             # 分类指标
-│   ├── plot_history.py        # 根据 history.json 绘制曲线
-│   ├── predict.py             # 单条文本预测入口
-│   ├── train.py               # 训练入口
-│   └── utils.py               # 通用工具
-├── pyproject.toml             # editable package 与依赖配置
-└── environment.yml            # 可选 Conda 环境配置
+│   ├── train.csv                 # Training set
+│   └── val.csv                   # Validation set
+├── docs/
+│   ├── frontend.md               # Frontend architecture
+│   ├── model.md                  # Model training guide
+│   └── README_CN.md              # Chinese README
+└── src/
+    ├── app.py                    # FastAPI application factory
+    ├── config.py                 # Configuration loader (.env + YAML)
+    ├── model.py                  # Model wrapper (lazy-loads BERTweet)
+    ├── api_service.py            # LLM three-stage analysis service
+    ├── data.py                   # Dataset loading and cleaning
+    ├── train.py                  # Training script
+    ├── evaluate.py               # Evaluation script
+    ├── predict.py                # Single-text prediction CLI
+    ├── metrics.py                # Classification metrics
+    ├── plot_history.py           # Training curve plotting
+    ├── utils.py                  # Shared utilities
+    └── templates/
+        └── index.html            # Jinja2 frontend page
 ```
 
-CSV 文件至少需要包含：
+## Architecture
 
-```text
+### Overall Pipeline
+
+```
+User submits a statement
+    │
+    ▼
+┌──────────────────────────────────────────────────────┐
+│  Step 1   classify_statement()     ← BERTweet model  │
+│           Returns {is_rumor, confidence}             │
+├──────────────────────────────────────────────────────┤
+│  Step 2   judge_statement()        ← LLM Stage 1     │
+│           LLM judges independently (no ML result)    │
+│           Returns {is_rumor, label, reasoning,       │
+│                    supporting_indicators}            │
+├──────────────────────────────────────────────────────┤
+│  Step 3   compare_results()        ← LLM Stage 2     │
+│           LLM compares ML and own verdicts           │
+│           Returns {agreement, comparison_summary}    │
+├──────────────────────────────────────────────────────┤
+│  Step 4   analyze_root_cause()     ← LLM Stage 3     │
+│           Convergent → unified explanation           │
+│           Divergent → root cause analysis            │
+│           Returns {root_cause_analysis,              │
+│                    key_indicators}                   │
+└──────────────────────────────────────────────────────┘
+    │
+    ▼
+Render HTML → returned to user
+```
+
+### ML Model
+
+A binary classifier fine-tuned from `vinai/bertweet-base`:
+
+```
+raw text → BERTweet tokenizer → BERTweet encoder → dropout → linear head → [rumor / not rumor]
+```
+
+Outputs softmax probabilities for two classes. Confidence is the probability of the predicted class.
+
+### LLM Analysis (Three Stages)
+
+| Stage | Function | Purpose |
+|-------|----------|---------|
+| Stage 1 | `judge_statement()` | LLM independently judges the text across five dimensions: verifiability, source credibility, logical coherence, emotional language, and specificity |
+| Stage 2 | `compare_results()` | LLM compares the ML verdict with its own, determining agreement or divergence |
+| Stage 3 | `analyze_root_cause()` | If convergent: synthesizes a unified explanation. If divergent: analyzes what misled which system |
+
+### Display
+
+- Three-column verdict header: ML Verdict | LLM Verdict (with yellow ⚠ on divergence) | Confidence
+- Two-column detail: LLM Analysis (reasoning + indicators) | Comparison (summary + root cause + key indicators)
+
+## Training
+
+### Data Preparation
+
+Place `train.csv` and `val.csv` under `datasets/` with `text` and `label` columns:
+
+```csv
 text,label
+"This appears to be a rumor",1
+"This is verified news",0
 ```
 
-## 环境配置
+### Configuration
 
-创建 Conda 环境：
+Edit `configs/bertweet.yaml` to adjust hyperparameters and paths. Key options:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `data.train_path` | `datasets/train.csv` | Training set path |
+| `data.val_path` | `datasets/val.csv` | Validation set path |
+| `training.epochs` | 16 | Number of epochs |
+| `training.learning_rate` | 1e-5 | Learning rate |
+| `training.early_stopping_metric` | `macro_f1` | Early stopping metric |
+| `training.early_stopping_patience` | 2 | Early stopping patience |
+
+### Run Training
 
 ```bash
-conda create -n intro2ai python=3.10 -y
+python main.py --train
+```
+
+The first run downloads `vinai/bertweet-base` from Hugging Face and caches it at `checkpoints/base/`. The best model is saved to `checkpoints/bertweet/best_model/`, with plots and metrics in `outputs/bertweet/`.
+
+### Evaluate
+
+```bash
+python -m src.evaluate --config configs/bertweet.yaml
+```
+
+### Predict via CLI
+
+```bash
+python -m src.predict --config configs/bertweet.yaml --text "Example text"
+```
+
+## Setup
+
+### Install Dependencies
+
+Conda (recommended):
+
+```bash
+conda env create -f environment.yml
 conda activate intro2ai
 ```
 
-防止用户目录中的 Python 包污染当前 Conda 环境：
+Or pip:
 
 ```bash
-conda env config vars set PYTHONNOUSERSITE=1 -n intro2ai
-conda deactivate
-conda activate intro2ai
+pip install -r requirements.txt
 ```
 
-以 editable 模式安装项目和依赖：
+### Configure LLM API
+
+Copy `.example.env` to `.env` and fill in your credentials:
+
+```
+API=https://models.sjtu.edu.cn/api/v1
+API_SECRET=your-api-key
+API_MODEL=deepseek-reasoner
+```
+
+See https://claw.sjtu.edu.cn/guide/sjtu-api/ for setup instructions.
+
+### Launch the Frontend
 
 ```bash
-cd /path/to/introuduction_to_ai
-python -m pip install -e .
+python main.py
 ```
 
-检查环境：
+Listens on `0.0.0.0:8000`. Open `http://localhost:8000` in a browser.
 
-```bash
-python -m pip check
-python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
+### CLI Options
+
 ```
-
-## 训练
-
-在项目根目录下运行：
-
-```bash
-python src/train.py --config configs/bertweet.yaml
-```
-
-首次运行可能会从 Hugging Face 下载 `vinai/bertweet-base`，并保存到 `checkpoints/base/`。之后训练会优先使用本地缓存。
-
-主要输出文件：
-
-```text
-checkpoints/bertweet/best_model/
-outputs/bertweet/history.json
-outputs/bertweet/best_metrics.json
-outputs/bertweet/cleaning_report.json
-outputs/bertweet/plots/
-```
-
-## 评估
-
-评估最佳 checkpoint：
-
-```bash
-python src/evaluate.py --config configs/bertweet.yaml
-```
-
-评估指定 checkpoint：
-
-```bash
-python src/evaluate.py \
-  --config configs/bertweet.yaml \
-  --checkpoint checkpoints/bertweet/best_model
-```
-
-## 预测
-
-预测单条文本：
-
-```bash
-python src/predict.py \
-  --config configs/bertweet.yaml \
-  --text "Example tweet text"
-```
-
-## 绘制训练曲线
-
-根据 `outputs/bertweet/history.json` 重新生成训练曲线：
-
-```bash
-python src/plot_history.py --config configs/bertweet.yaml
-```
-
-生成的图像包括：
-
-```text
-outputs/bertweet/plots/loss_curve.png
-outputs/bertweet/plots/accuracy_curve.png
-outputs/bertweet/plots/macro_f1_curve.png
-outputs/bertweet/plots/grad_norm_curve.png
+python main.py              Start the frontend (default)
+python main.py --display    Start the frontend
+python main.py --train      Train the model
+python main.py --help       Show help
 ```
