@@ -7,6 +7,8 @@ import yaml
 import os
 from dotenv import load_dotenv
 
+load_dotenv()
+
 
 def load_config(config_path: str | Path) -> dict[str, Any]:
     path = Path(config_path).resolve()

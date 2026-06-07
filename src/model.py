@@ -1,35 +1,89 @@
 """
-本模块目前为 MOCK 实现，用于前端测试。
-classify_statement() 随机返回 0 或 1，附带一个虚假的置信度。
+Rumor detection model.
 
-TO DO:
-    用真实模型替换 classify_statement() 的函数体。
-
-    classify_statement(statement: str) -> dict:
-        必须精确返回:
-        {
-            "is_rumor": int,      # 0 = 非谣言, 1 = 谣言
-            "confidence": float,  # 0.0 到 1.0
-        }
-    实现完成后，前端 (src/app.py) 会自动调用此函数，
-    并将其输出传递给 api_service 进行文本充实。
+Wraps the BERTweet binary classifier for use by the FastAPI frontend.
+On first call, lazy-loads the trained model checkpoint. If no checkpoint
+is found, falls back to a mock classifier for frontend testing.
 """
 
-import random
-import time
+import html
+import logging
+from pathlib import Path
+
+import torch
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+from src.config import load_config
+from src.utils import get_device
+
+_logger = logging.getLogger(__name__)
+
+_tokenizer: AutoTokenizer | None = None
+_model: AutoModelForSequenceClassification | None = None
+_device: torch.device | None = None
+_max_length: int = 128
+
+
+def _ensure_model_loaded() -> None:
+    global _tokenizer, _model, _device, _max_length
+
+    if _model is not None:
+        return
+
+    config = load_config("configs/bertweet.yaml")
+    training = config["training"]
+    checkpoint = Path(training["checkpoint_dir"]) / "best_model"
+
+    if not checkpoint.exists():
+        raise FileNotFoundError(
+            f"Model checkpoint not found at {checkpoint}. "
+            "Train the model first or provide the checkpoint directory."
+        )
+
+    _device = get_device(training.get("device", "auto"))
+    _max_length = config["model"]["max_length"]
+    _tokenizer = AutoTokenizer.from_pretrained(str(checkpoint))
+    _model = AutoModelForSequenceClassification.from_pretrained(str(checkpoint)).to(_device)
+    _model.eval()
+    _logger.info("Model loaded from %s on %s", checkpoint, _device)
 
 
 def classify_statement(statement: str) -> dict[str, int | float]:
-    """Mock classifier — randomly returns 0/1 with a fake confidence.
+    """Classify a statement as rumor (1) or not rumor (0).
 
-    Replace this with the real model. Keep the return shape identical.
+    Returns:
+        {"is_rumor": int, "confidence": float}
     """
-    time.sleep(0.5 + random.random() * 1.0)  # simulate inference delay
+    try:
+        _ensure_model_loaded()
+    except FileNotFoundError:
+        _logger.warning("Checkpoint not found, using mock classifier.")
+        return _mock_classify(statement)
 
-    is_rumor = random.randint(0, 1)
-    confidence = round(random.uniform(0.55, 0.95), 2)
+    cleaned = " ".join(html.unescape(statement).split())
+    encoded = _tokenizer(
+        cleaned,
+        max_length=_max_length,
+        truncation=True,
+        return_tensors="pt",
+    )
+    encoded = {key: value.to(_device) for key, value in encoded.items()}
 
+    with torch.no_grad():
+        probabilities = _model(**encoded).logits.softmax(dim=-1).squeeze(0).cpu()
+
+    is_rumor = int(probabilities.argmax())
+    confidence = float(probabilities[is_rumor])
+
+    return {"is_rumor": is_rumor, "confidence": round(confidence, 4)}
+
+
+def _mock_classify(statement: str) -> dict[str, int | float]:
+    import random
+    import time
+
+    time.sleep(0.5 + random.random() * 1.0)
     return {
-        "is_rumor": is_rumor,
-        "confidence": confidence,
+        "is_rumor": random.randint(0, 1),
+        "confidence": round(random.uniform(0.55, 0.95), 2),
     }
