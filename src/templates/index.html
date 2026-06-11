@@ -123,6 +123,58 @@
         .agreement-converge { background: var(--not-rumor-bg); color: var(--not-rumor); }
         .agreement-diverge { background: var(--warn-bg); color: #b8860b; }
 
+        .rag-section {
+            margin-top: 1.75rem;
+            padding-top: 1.25rem;
+            border-top: 2px solid var(--border);
+        }
+
+        .rag-section h2 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .rag-desc {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .evidence-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.9rem;
+        }
+
+        .evidence-item {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem;
+            background: var(--bg);
+        }
+
+        .evidence-header {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .evidence-title {
+            font-weight: 700;
+        }
+
+        .evidence-meta {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .evidence-text {
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+
         @media (max-width: 600px) {
             .content-row { flex-direction: column; }
             .verdict-row { flex-direction: column; }
@@ -258,6 +310,35 @@
                     {% endif %}
                 </div>
             </div>
+
+            {% if rag_evidence %}
+            <div class="rag-section">
+                <h2>RAG Retrieved Evidence</h2>
+                <p class="rag-desc">
+                    The following evidence was retrieved from the ChromaDB knowledge base
+                    and provided to the LLM as reference.
+                </p>
+
+                <div class="evidence-list">
+                    {% for ev in rag_evidence[:3] %}
+                    <div class="evidence-item">
+                        <div class="evidence-header">
+                            <span class="evidence-title">Evidence {{ loop.index }}</span>
+                            <span class="evidence-meta">
+                                Source: {{ ev.source | default("unknown") }}
+                                · Label: {{ ev.label | default("unknown") }}
+                                · Distance: {{ ev.distance | default("N/A") }}
+                            </span>
+                        </div>
+                        <p class="evidence-text">
+                            {{ ev.text | default("") }}
+                        </p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
         </div>
         {% endif %}
 

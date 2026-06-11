@@ -85,19 +85,59 @@ Respond with ONLY a JSON object:
   "key_indicators": ["most important clue 1", "most important clue 2", ...]
 }}"""
 
+def format_rag_evidence(evidence: list[dict] | None) -> str:
+    """Format RAG retrieved evidence for LLM prompt."""
+    if not evidence:
+        return "No RAG evidence was retrieved."
 
-def judge_statement(statement: str) -> dict[str, object]:
+    lines = []
+    for i, ev in enumerate(evidence, 1):
+        source = ev.get("source", "unknown")
+        label = ev.get("label", "unknown")
+        distance = ev.get("distance", "unknown")
+        text = ev.get("text", "")
+
+        lines.append(
+            f"Evidence {i}:\n"
+            f"- Source: {source}\n"
+            f"- Label: {label}\n"
+            f"- Distance: {distance}\n"
+            f"- Text: {text}"
+        )
+
+    return "\n\n".join(lines)
+
+
+def judge_statement(
+    statement: str,
+    rag_evidence: list[dict] | None = None,
+) -> dict[str, object]:
     """Stage 1: LLM independently judges the statement without seeing ML output.
 
     Returns:
         Dict with llm_is_rumor (int), llm_label (str),
         reasoning (str), supporting_indicators (list[str]).
     """
+
+    rag_text = format_rag_evidence(rag_evidence)
+
+    user_prompt = f"""
+    Statement:
+    {statement}
+
+    Retrieved RAG Evidence:
+    {rag_text}
+
+    Please analyze the statement. The RAG evidence is only a reference.
+    If the evidence is weak, irrelevant, or insufficient, explicitly mention that.
+    Do not blindly trust retrieved evidence.
+    """
+
     response = client.chat.completions.create(
         model=API_MODEL,
         messages=[
             {"role": "system", "content": STAGE1_PROMPT},
-            {"role": "user", "content": statement},
+            {"role": "user", "content": user_prompt},
         ],
         temperature=0.3,
     )

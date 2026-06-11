@@ -6,45 +6,51 @@ Course Project of NIS4307 *Introduction to Artificial Intelligence*, Shanghai Ji
 
 ## Overview
 
-This project combines a **fine-tuned BERTweet model** with **multi-stage LLM analysis** to build an explainable rumor detection system. Given an English statement, the system independently classifies it with both a machine learning model and an LLM, compares the two verdicts, analyzes agreement or divergence, and presents the full analysis in a visual interface.
+This project combines a **fine-tuned BERTweet model**, **multi-stage LLM analysis**, and an optional **RAG evidence retrieval module** to build an explainable rumor detection system. Given an English statement, the system classifies it with a machine learning model, retrieves related evidence from a ChromaDB knowledge base when available, asks an LLM to analyze the statement, compares the ML and LLM verdicts, analyzes agreement or divergence, and presents the full analysis in a visual interface.
 
 ## Project Structure
 
-```
+```text
 NIS4307-01/
-├── main.py                       # Unified entry point (train / serve)
-├── requirements.txt              # Python dependencies
-├── environment.yml               # Conda environment config
-├── .env                          # Environment variables (create locally)
-├── .example.env                  # Environment variable template
+├── RAG/                         # RAG module and ChromaDB retrieval code
+│   ├── chroma_retriever.py       # ChromaDB retriever
+│   ├── config.py                 # RAG configuration
+│   ├── em.py                     # Embedding / vectorization utilities
+│   ├── llm_judge.py              # Standalone RAG + LLM judging script
+│   ├── main.py                   # Standalone RAG entry point
+│   ├── requirements.txt          # RAG dependencies
+│   └── train.csv                 # RAG sample / auxiliary data
 ├── configs/
 │   └── bertweet.yaml             # Model and training configuration
-├── checkpoints/
-│   ├── base/                     # Cached pretrained BERTweet weights
-│   └── bertweet/best_model/      # Fine-tuned best model
-├── outputs/bertweet/             # Training metrics, plots, and reports
-├── datasets/
-│   ├── train.csv                 # Training set
-│   └── val.csv                   # Validation set
 ├── docs/
-│   ├── frontend.md               # Frontend architecture
-│   ├── model.md                  # Model training guide
+│   ├── frontend.md               # Frontend architecture documentation
+│   ├── model.md                  # Model training documentation
 │   └── README_CN.md              # Chinese README
-└── src/
-    ├── app.py                    # FastAPI application factory
-    ├── config.py                 # Configuration loader (.env + YAML)
-    ├── model.py                  # Model wrapper (lazy-loads BERTweet)
-    ├── api_service.py            # LLM three-stage analysis service
-    ├── data.py                   # Dataset loading and cleaning
-    ├── train.py                  # Training script
-    ├── evaluate.py               # Evaluation script
-    ├── predict.py                # Single-text prediction CLI
-    ├── metrics.py                # Classification metrics
-    ├── plot_history.py           # Training curve plotting
-    ├── utils.py                  # Shared utilities
-    └── templates/
-        └── index.html            # Jinja2 frontend page
-```
+├── outputs/bertweet/             # Training metrics, plots, and evaluation outputs
+├── src/
+│   ├── app.py                    # FastAPI application factory
+│   ├── config.py                 # Configuration loader (.env + YAML)
+│   ├── model.py                  # BERTweet model wrapper
+│   ├── api_service.py            # LLM multi-stage analysis service
+│   ├── rag_service.py            # Main-system wrapper for RAG evidence retrieval
+│   ├── data.py                   # Dataset loading and cleaning
+│   ├── train.py                  # Training script
+│   ├── evaluate.py               # Evaluation script
+│   ├── predict.py                # Single-text prediction CLI
+│   ├── metrics.py                # Classification metrics
+│   ├── plot_history.py           # Training curve plotting
+│   ├── utils.py                  # Shared utilities
+│   └── templates/
+│       └── index.html            # Jinja2 frontend page
+├── .example.env                  # Environment variable template
+├── .gitignore                    # Git ignore rules
+├── README.md                     # Project README
+├── environment.yml               # Conda environment configuration
+├── main.py                       # Unified entry point
+├── pyproject.toml                # Project package configuration
+├── requirements.txt              # Python dependencies
+└── report.pdf                    # Final course report
+'''
 
 ## Architecture
 
@@ -58,16 +64,19 @@ User submits a statement
 │  Step 1   classify_statement()     ← BERTweet model  │
 │           Returns {is_rumor, confidence}             │
 ├──────────────────────────────────────────────────────┤
-│  Step 2   judge_statement()        ← LLM Stage 1     │
-│           LLM judges independently (no ML result)    │
+│  Step 2   retrieve_rag_evidence()  ← Optional RAG    │
+│           Retrieves top-k evidence from ChromaDB     │
+├──────────────────────────────────────────────────────┤
+│  Step 3   judge_statement()        ← LLM Stage 1     │
+│           LLM judges with optional RAG evidence      │
 │           Returns {is_rumor, label, reasoning,       │
 │                    supporting_indicators}            │
 ├──────────────────────────────────────────────────────┤
-│  Step 3   compare_results()        ← LLM Stage 2     │
+│  Step 4   compare_results()        ← LLM Stage 2     │
 │           LLM compares ML and own verdicts           │
 │           Returns {agreement, comparison_summary}    │
 ├──────────────────────────────────────────────────────┤
-│  Step 4   analyze_root_cause()     ← LLM Stage 3     │
+│  Step 5   analyze_root_cause()     ← LLM Stage 3     │
 │           Convergent → unified explanation           │
 │           Divergent → root cause analysis            │
 │           Returns {root_cause_analysis,              │
@@ -88,11 +97,21 @@ raw text → BERTweet tokenizer → BERTweet encoder → dropout → linear head
 
 Outputs softmax probabilities for two classes. Confidence is the probability of the predicted class.
 
+### RAG Evidence Retrieval
+
+The optional RAG module retrieves top-k related evidence from a local ChromaDB knowledge base and passes the retrieved evidence to the LLM prompt. RAG does **not** modify the BERTweet model's binary prediction. It is used only as additional context for explanation and comparison.
+
+Runtime behavior:
+
+- If the RAG database and dependencies are available, the main app calls `retrieve_rag_evidence()` before LLM Stage 1.
+- Retrieved evidence is shown in the frontend under **RAG Retrieved Evidence**.
+- If RAG is unavailable, the app falls back to the original BERTweet + LLM pipeline and continues to run.
+
 ### LLM Analysis (Three Stages)
 
 | Stage | Function | Purpose |
 |-------|----------|---------|
-| Stage 1 | `judge_statement()` | LLM independently judges the text across five dimensions: verifiability, source credibility, logical coherence, emotional language, and specificity |
+| Stage 1 | `judge_statement()` | LLM judges the text across five dimensions: verifiability, source credibility, logical coherence, emotional language, and specificity, with optional RAG evidence as reference |
 | Stage 2 | `compare_results()` | LLM compares the ML verdict with its own, determining agreement or divergence |
 | Stage 3 | `analyze_root_cause()` | If convergent: synthesizes a unified explanation. If divergent: analyzes what misled which system |
 
@@ -100,6 +119,7 @@ Outputs softmax probabilities for two classes. Confidence is the probability of 
 
 - Three-column verdict header: ML Verdict | LLM Verdict (with yellow ⚠ on divergence) | Confidence
 - Two-column detail: LLM Analysis (reasoning + indicators) | Comparison (summary + root cause + key indicators)
+- RAG Retrieved Evidence: top retrieved evidence items with source, label, distance, and text when RAG is available
 
 ## Training
 
@@ -174,6 +194,37 @@ API_MODEL=deepseek-reasoner
 ```
 
 See https://claw.sjtu.edu.cn/guide/sjtu-api/ for setup instructions.
+
+### Optional: Enable RAG Evidence Retrieval
+
+RAG code is located under `RAG/`. The ChromaDB database is large and is not stored directly in the Git repository. To enable RAG in the frontend:
+
+1. Open the GitHub **Releases** page.
+2. Download `ChromaDB_data_populate.zip` from the release named **ChromaDB database for RAG**.
+3. Extract the zip file into the `RAG/` directory.
+
+After extraction, the path should look like:
+
+```text
+RAG/ChromaDB_data_populate/DataBase/data
+```
+
+Install RAG-specific dependencies if needed:
+
+```bash
+cd RAG
+pip install -r requirements.txt
+cd ..
+```
+
+When RAG is correctly configured, the frontend will display a **RAG Retrieved Evidence** section after analysis. If the database or dependencies are missing, the main app still runs without RAG evidence.
+
+You can also run the standalone RAG demo:
+
+```bash
+cd RAG
+python main.py
+```
 
 ### Launch the Frontend
 
