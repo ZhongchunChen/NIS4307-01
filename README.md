@@ -50,7 +50,7 @@ NIS4307-01/
 ├── pyproject.toml                # Project package configuration
 ├── requirements.txt              # Python dependencies
 └── report.pdf                    # Final course report
-'''
+```
 
 ## Architecture
 
