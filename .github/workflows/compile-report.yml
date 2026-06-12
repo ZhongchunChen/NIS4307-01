@@ -5,6 +5,7 @@ on:
     branches: [main, report]
     paths:
       - 'report/**'
+      - '.github/workflows/compile-report.yml'
   pull_request:
     branches: [main]
     paths:
