@@ -31,7 +31,8 @@ jobs:
             texlive-fonts-extra \
             texlive-lang-chinese \
             texlive-science \
-            texlive-publishers
+            texlive-publishers \
+            texlive-xetex
 
       - name: Compile report
         working-directory: report
