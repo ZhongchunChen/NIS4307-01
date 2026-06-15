@@ -54,20 +54,14 @@ def normalize_text(text: str) -> str:
     return " ".join(html.unescape(text).split())
 
 
-def _clean_split(
-    path: str | Path,
+def _clean_dataframe(
+    dataframe: pd.DataFrame,
+    source_rows: int,
     text_column: str,
     label_column: str,
     drop_duplicate_texts: bool,
     remove_conflicting_texts: bool,
 ) -> tuple[pd.DataFrame, CleaningReport]:
-    dataframe = pd.read_csv(path)
-    required_columns = {text_column, label_column}
-    missing = required_columns - set(dataframe.columns)
-    if missing:
-        raise ValueError(f"{path} is missing required columns: {sorted(missing)}")
-
-    source_rows = len(dataframe)
     dataframe = dataframe.dropna(subset=[text_column, label_column]).copy()
     dataframe[text_column] = dataframe[text_column].astype(str).map(normalize_text)
     dataframe[label_column] = pd.to_numeric(dataframe[label_column], errors="coerce")
@@ -102,6 +96,59 @@ def _clean_split(
     return dataframe, report
 
 
+def _clean_split(
+    path: str | Path,
+    text_column: str,
+    label_column: str,
+    drop_duplicate_texts: bool,
+    remove_conflicting_texts: bool,
+) -> tuple[pd.DataFrame, CleaningReport]:
+    dataframe = pd.read_csv(path)
+    required_columns = {text_column, label_column}
+    missing = required_columns - set(dataframe.columns)
+    if missing:
+        raise ValueError(f"{path} is missing required columns: {sorted(missing)}")
+
+    return _clean_dataframe(
+        dataframe,
+        len(dataframe),
+        text_column,
+        label_column,
+        drop_duplicate_texts,
+        remove_conflicting_texts,
+    )
+
+
+def _load_extra_datasets(
+    data_config: dict[str, Any],
+    cleaning: dict[str, Any],
+) -> tuple[list[pd.DataFrame], dict[str, Any]]:
+    extra_config = data_config.get("extra_datasets", {})
+    if not extra_config.get("enabled", False):
+        return [], {"enabled": False, "datasets": {}}
+
+    text_column = data_config["text_column"]
+    label_column = data_config["label_column"]
+    frames = []
+    reports = {"enabled": True, "datasets": {}}
+    for path in extra_config.get("paths", []):
+        extra_path = Path(path)
+        if not extra_path.exists():
+            raise FileNotFoundError(f"Extra dataset does not exist: {extra_path}")
+        dataframe, report = _clean_split(
+            extra_path,
+            text_column,
+            label_column,
+            cleaning["drop_duplicate_texts"],
+            cleaning["remove_conflicting_texts"],
+        )
+        dataframe = dataframe.copy()
+        dataframe["extra_dataset_path"] = str(extra_path)
+        frames.append(dataframe)
+        reports["datasets"][str(extra_path)] = vars(report)
+    return frames, reports
+
+
 def load_datasets(config: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     data_config = config["data"]
     text_column = data_config["text_column"]
@@ -122,6 +169,19 @@ def load_datasets(config: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, d
         cleaning["drop_duplicate_texts"],
         cleaning["remove_conflicting_texts"],
     )
+    extra_frames, extra_report = _load_extra_datasets(data_config, cleaning)
+    if extra_frames:
+        train_df = pd.concat([train_df, *extra_frames], ignore_index=True)
+        train_df, train_combined_report = _clean_dataframe(
+            train_df,
+            len(train_df),
+            text_column,
+            label_column,
+            cleaning["drop_duplicate_texts"],
+            cleaning["remove_conflicting_texts"],
+        )
+    else:
+        train_combined_report = None
 
     if cleaning["remove_train_val_overlap"]:
         overlap_mask = val_df[text_column].isin(set(train_df[text_column]))
@@ -131,6 +191,10 @@ def load_datasets(config: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, d
 
     reports = {
         "train": vars(train_report),
+        "extra_datasets": extra_report,
+        "train_after_extra_merge": (
+            vars(train_combined_report) if train_combined_report is not None else None
+        ),
         "val": vars(val_report),
         "train_label_counts": train_df[label_column].value_counts().sort_index().to_dict(),
         "val_label_counts": val_df[label_column].value_counts().sort_index().to_dict(),

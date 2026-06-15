@@ -19,6 +19,14 @@ def load_config(config_path: str | Path) -> dict[str, Any]:
         value = Path(config["data"][key])
         config["data"][key] = str(value if value.is_absolute() else project_root / value)
 
+    extra_datasets = config["data"].get("extra_datasets", {})
+    extra_paths = extra_datasets.get("paths", [])
+    config["data"].setdefault("extra_datasets", {})
+    config["data"]["extra_datasets"]["paths"] = [
+        str(path if (path := Path(extra_path)).is_absolute() else project_root / path)
+        for extra_path in extra_paths
+    ]
+
     output_dir = Path(config["training"]["output_dir"])
     config["training"]["output_dir"] = str(
         output_dir if output_dir.is_absolute() else project_root / output_dir
