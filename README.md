@@ -51,7 +51,8 @@ outputs/bertweet/
 │   └── bertweet.yaml          # training and model configuration
 ├── datasets/
 │   ├── train.csv              # training set
-│   └── val.csv                # validation set
+│   ├── val.csv                # validation set
+│   └── extra/                 # converted extra training CSV files
 ├── checkpoints/
 │   ├── base/                  # cached pretrained BERTweet checkpoint
 │   └── bertweet/              # fine-tuned model checkpoints
@@ -60,12 +61,15 @@ outputs/bertweet/
 ├── src/
 │   ├── config.py              # config loading
 │   ├── data.py                # dataset loading and cleaning
-│   ├── evaluate.py            # evaluation entry
 │   ├── metrics.py             # classification metrics
+│   ├── training.py            # reusable training and evaluation logic
+│   └── utils.py               # shared utilities
+├── scripts/
+│   ├── evaluate.py            # evaluation entry
 │   ├── plot_history.py        # plot curves from history.json
 │   ├── predict.py             # single-text prediction entry
-│   ├── train.py               # training entry
-│   └── utils.py               # shared utilities
+│   ├── prepare_extra_datasets.py
+│   └── train.py               # training entry
 ├── pyproject.toml             # editable package and dependencies
 └── environment.yml            # optional Conda environment file
 ```
@@ -107,12 +111,48 @@ python -m pip check
 python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 ```
 
+## Prepare Extra Datasets
+
+Convert public datasets to trainable CSV files:
+
+```bash
+python scripts/prepare_extra_datasets.py
+```
+
+The script reads `datasets/gossipcop_*.parquet` and
+`datasets/shared_task_dev.jsonl`, then writes:
+
+```text
+datasets/extra/gossipcop_extra.csv
+datasets/extra/shared_task_extra.csv
+datasets/extra/all_extra.csv
+datasets/extra/extra_datasets_report.json
+```
+
+Label mapping:
+
+```text
+GossipCop: R -> 0, F -> 1, H/M kept as source metadata
+Shared task: SUPPORTS -> 0, REFUTES -> 1, NOT ENOUGH INFO skipped
+```
+
+Extra training data is controlled in `configs/bertweet.yaml`:
+
+```yaml
+data:
+  extra_datasets:
+    enabled: true
+    paths:
+      - datasets/extra/gossipcop_extra.csv
+      - datasets/extra/shared_task_extra.csv
+```
+
 ## Train
 
 Run training from the project root:
 
 ```bash
-python src/train.py --config configs/bertweet.yaml
+python scripts/train.py --config configs/bertweet.yaml
 ```
 
 The first run may download `vinai/bertweet-base` from Hugging Face and save it
@@ -133,13 +173,13 @@ outputs/bertweet/plots/
 Evaluate the best checkpoint:
 
 ```bash
-python src/evaluate.py --config configs/bertweet.yaml
+python scripts/evaluate.py --config configs/bertweet.yaml
 ```
 
 To evaluate a specific checkpoint:
 
 ```bash
-python src/evaluate.py \
+python scripts/evaluate.py \
   --config configs/bertweet.yaml \
   --checkpoint checkpoints/bertweet/best_model
 ```
@@ -149,7 +189,7 @@ python src/evaluate.py \
 Predict one text:
 
 ```bash
-python src/predict.py \
+python scripts/predict.py \
   --config configs/bertweet.yaml \
   --text "Example tweet text"
 ```
@@ -159,7 +199,7 @@ python src/predict.py \
 Regenerate training curves from `outputs/bertweet/history.json`:
 
 ```bash
-python src/plot_history.py --config configs/bertweet.yaml
+python scripts/plot_history.py --config configs/bertweet.yaml
 ```
 
 Generated plots:
@@ -222,7 +262,8 @@ outputs/bertweet/
 │   └── bertweet.yaml          # 模型与训练配置
 ├── datasets/
 │   ├── train.csv              # 训练集
-│   └── val.csv                # 验证集
+│   ├── val.csv                # 验证集
+│   └── extra/                 # 转换后的额外训练 CSV
 ├── checkpoints/
 │   ├── base/                  # 缓存的 BERTweet 预训练权重
 │   └── bertweet/              # 微调后的模型权重
@@ -231,12 +272,15 @@ outputs/bertweet/
 ├── src/
 │   ├── config.py              # 配置读取
 │   ├── data.py                # 数据读取与清洗
-│   ├── evaluate.py            # 评估入口
 │   ├── metrics.py             # 分类指标
+│   ├── training.py            # 可复用训练与评估逻辑
+│   └── utils.py               # 通用工具
+├── scripts/
+│   ├── evaluate.py            # 评估入口
 │   ├── plot_history.py        # 根据 history.json 绘制曲线
 │   ├── predict.py             # 单条文本预测入口
-│   ├── train.py               # 训练入口
-│   └── utils.py               # 通用工具
+│   ├── prepare_extra_datasets.py
+│   └── train.py               # 训练入口
 ├── pyproject.toml             # editable package 与依赖配置
 └── environment.yml            # 可选 Conda 环境配置
 ```
@@ -278,12 +322,47 @@ python -m pip check
 python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 ```
 
+## 准备额外数据集
+
+将公开数据集转换为可训练的 CSV：
+
+```bash
+python scripts/prepare_extra_datasets.py
+```
+
+脚本读取 `datasets/gossipcop_*.parquet` 和 `datasets/shared_task_dev.jsonl`，并输出：
+
+```text
+datasets/extra/gossipcop_extra.csv
+datasets/extra/shared_task_extra.csv
+datasets/extra/all_extra.csv
+datasets/extra/extra_datasets_report.json
+```
+
+标签映射：
+
+```text
+GossipCop: R -> 0, F -> 1，H/M 作为 source 元数据保留
+Shared task: SUPPORTS -> 0, REFUTES -> 1，NOT ENOUGH INFO 丢弃
+```
+
+是否加入额外训练数据由 `configs/bertweet.yaml` 控制：
+
+```yaml
+data:
+  extra_datasets:
+    enabled: true
+    paths:
+      - datasets/extra/gossipcop_extra.csv
+      - datasets/extra/shared_task_extra.csv
+```
+
 ## 训练
 
 在项目根目录下运行：
 
 ```bash
-python src/train.py --config configs/bertweet.yaml
+python scripts/train.py --config configs/bertweet.yaml
 ```
 
 首次运行可能会从 Hugging Face 下载 `vinai/bertweet-base`，并保存到 `checkpoints/base/`。之后训练会优先使用本地缓存。
@@ -303,13 +382,13 @@ outputs/bertweet/plots/
 评估最佳 checkpoint：
 
 ```bash
-python src/evaluate.py --config configs/bertweet.yaml
+python scripts/evaluate.py --config configs/bertweet.yaml
 ```
 
 评估指定 checkpoint：
 
 ```bash
-python src/evaluate.py \
+python scripts/evaluate.py \
   --config configs/bertweet.yaml \
   --checkpoint checkpoints/bertweet/best_model
 ```
@@ -319,7 +398,7 @@ python src/evaluate.py \
 预测单条文本：
 
 ```bash
-python src/predict.py \
+python scripts/predict.py \
   --config configs/bertweet.yaml \
   --text "Example tweet text"
 ```
@@ -329,7 +408,7 @@ python src/predict.py \
 根据 `outputs/bertweet/history.json` 重新生成训练曲线：
 
 ```bash
-python src/plot_history.py --config configs/bertweet.yaml
+python scripts/plot_history.py --config configs/bertweet.yaml
 ```
 
 生成的图像包括：
