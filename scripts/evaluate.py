@@ -8,7 +8,7 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from src.config import load_config
 from src.data import TweetDataset, load_datasets
-from src.train import build_loader, evaluate
+from src.training import build_loader, evaluate
 from src.utils import get_device, save_json
 
 

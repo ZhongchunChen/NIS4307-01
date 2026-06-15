@@ -22,10 +22,10 @@ dependencies = [
 ]
 
 [project.scripts]
-bertweet-train = "src.train:main"
-bertweet-evaluate = "src.evaluate:main"
-bertweet-predict = "src.predict:main"
-bertweet-plot-history = "src.plot_history:main"
+bertweet-train = "scripts.train:main"
+bertweet-evaluate = "scripts.evaluate:main"
+bertweet-predict = "scripts.predict:main"
+bertweet-plot-history = "scripts.plot_history:main"
 
 [tool.setuptools.packages.find]
-include = ["src*"]
+include = ["src*", "scripts*"]

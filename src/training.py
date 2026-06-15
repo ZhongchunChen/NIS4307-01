@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import math
 import shutil
 from pathlib import Path
@@ -16,7 +15,6 @@ from tqdm.auto import tqdm
 from transformers import AutoModel, AutoModelForSequenceClassification, AutoTokenizer
 from transformers.optimization import get_linear_schedule_with_warmup
 
-from src.config import load_config
 from src.data import TweetDataset, load_datasets
 from src.metrics import classification_metrics
 from src.utils import get_device, save_json, set_seed
@@ -327,18 +325,3 @@ def train(config: dict[str, Any]) -> None:
             if epochs_without_improvement >= training["early_stopping_patience"]:
                 print("Early stopping.")
                 break
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Fine-tune BERTweet for binary classification.")
-    parser.add_argument("--config", default="configs/bertweet.yaml")
-    return parser.parse_args()
-
-
-def main() -> None:
-    args = parse_args()
-    train(load_config(args.config))
-
-
-if __name__ == "__main__":
-    main()
