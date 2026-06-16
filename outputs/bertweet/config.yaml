@@ -1,0 +1,42 @@
+seed: 42
+
+data:
+  train_path: datasets/train.csv
+  val_path: datasets/val.csv
+  text_column: text
+  label_column: label
+  extra_datasets:
+    enabled: true
+    paths:
+      - datasets/gossipcop_extra.csv
+      - datasets/shared_task_extra.csv
+      - datasets/val_64pct.csv
+  cleaning:
+    drop_duplicate_texts: true
+    remove_conflicting_texts: true
+    remove_train_val_overlap: true
+
+model:
+  pretrained_name: vinai/bertweet-base
+  base_checkpoint_dir: checkpoints/base
+  max_length: 128
+  use_fast_tokenizer: false
+  tokenizer_normalization: true
+
+training:
+  output_dir: outputs/bertweet
+  checkpoint_dir: checkpoints/bertweet
+  device: auto
+  train_batch_size: 32
+  eval_batch_size: 32
+  epochs: 16
+  learning_rate: 1.0e-5
+  weight_decay: 0.01
+  warmup_ratio: 0.1
+  max_grad_norm: 1.0
+  gradient_accumulation_steps: 1
+  fp16: false
+  num_workers: 2
+  early_stopping_metric: macro_f1
+  early_stopping_mode: max
+  early_stopping_patience: 2
