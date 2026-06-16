@@ -52,7 +52,9 @@ outputs/bertweet/
 ├── datasets/
 │   ├── train.csv              # training set
 │   ├── val.csv                # validation set
-│   └── extra/                 # converted extra training CSV files
+│   ├── gossipcop_extra.csv     # converted GossipCop training CSV
+│   ├── shared_task_extra.csv   # converted shared-task training CSV
+│   └── raw_data/               # original public dataset files
 ├── checkpoints/
 │   ├── base/                  # cached pretrained BERTweet checkpoint
 │   └── bertweet/              # fine-tuned model checkpoints
@@ -119,14 +121,14 @@ Convert public datasets to trainable CSV files:
 python scripts/prepare_extra_datasets.py
 ```
 
-The script reads `datasets/gossipcop_*.parquet` and
-`datasets/shared_task_dev.jsonl`, then writes:
+The script reads `datasets/raw_data/gossipcop_*.parquet` and
+`datasets/raw_data/shared_task_dev.jsonl`, then writes:
 
 ```text
-datasets/extra/gossipcop_extra.csv
-datasets/extra/shared_task_extra.csv
-datasets/extra/all_extra.csv
-datasets/extra/extra_datasets_report.json
+datasets/gossipcop_extra.csv
+datasets/shared_task_extra.csv
+datasets/all_extra.csv
+datasets/extra_datasets_report.json
 ```
 
 Label mapping:
@@ -143,8 +145,8 @@ data:
   extra_datasets:
     enabled: true
     paths:
-      - datasets/extra/gossipcop_extra.csv
-      - datasets/extra/shared_task_extra.csv
+      - datasets/gossipcop_extra.csv
+      - datasets/shared_task_extra.csv
 ```
 
 ## Train
@@ -263,7 +265,9 @@ outputs/bertweet/
 ├── datasets/
 │   ├── train.csv              # 训练集
 │   ├── val.csv                # 验证集
-│   └── extra/                 # 转换后的额外训练 CSV
+│   ├── gossipcop_extra.csv     # 转换后的 GossipCop 训练 CSV
+│   ├── shared_task_extra.csv   # 转换后的 shared-task 训练 CSV
+│   └── raw_data/               # 原始公开数据文件
 ├── checkpoints/
 │   ├── base/                  # 缓存的 BERTweet 预训练权重
 │   └── bertweet/              # 微调后的模型权重
@@ -330,13 +334,13 @@ python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 python scripts/prepare_extra_datasets.py
 ```
 
-脚本读取 `datasets/gossipcop_*.parquet` 和 `datasets/shared_task_dev.jsonl`，并输出：
+脚本读取 `datasets/raw_data/gossipcop_*.parquet` 和 `datasets/raw_data/shared_task_dev.jsonl`，并输出：
 
 ```text
-datasets/extra/gossipcop_extra.csv
-datasets/extra/shared_task_extra.csv
-datasets/extra/all_extra.csv
-datasets/extra/extra_datasets_report.json
+datasets/gossipcop_extra.csv
+datasets/shared_task_extra.csv
+datasets/all_extra.csv
+datasets/extra_datasets_report.json
 ```
 
 标签映射：
@@ -353,8 +357,8 @@ data:
   extra_datasets:
     enabled: true
     paths:
-      - datasets/extra/gossipcop_extra.csv
-      - datasets/extra/shared_task_extra.csv
+      - datasets/gossipcop_extra.csv
+      - datasets/shared_task_extra.csv
 ```
 
 ## 训练

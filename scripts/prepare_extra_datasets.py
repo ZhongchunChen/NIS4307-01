@@ -143,9 +143,9 @@ def convert_shared_task(input_path: Path, output_path: Path) -> tuple[pd.DataFra
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Convert public extra datasets to trainable CSV files.")
-    parser.add_argument("--input-dir", default="datasets")
-    parser.add_argument("--output-dir", default="datasets/extra")
-    parser.add_argument("--shared-task", default="datasets/shared_task_dev.jsonl")
+    parser.add_argument("--input-dir", default="datasets/raw_data")
+    parser.add_argument("--output-dir", default="datasets")
+    parser.add_argument("--shared-task", default="datasets/raw_data/shared_task_dev.jsonl")
     parser.add_argument("--gossipcop-output", default="gossipcop_extra.csv")
     parser.add_argument("--shared-task-output", default="shared_task_extra.csv")
     parser.add_argument("--combined-output", default="all_extra.csv")

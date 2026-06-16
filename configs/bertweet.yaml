@@ -8,8 +8,8 @@ data:
   extra_datasets:
     enabled: true
     paths:
-      - datasets/extra/gossipcop_extra.csv
-      - datasets/extra/shared_task_extra.csv
+      - datasets/gossipcop_extra.csv
+      - datasets/shared_task_extra.csv
   cleaning:
     drop_duplicate_texts: true
     remove_conflicting_texts: true
