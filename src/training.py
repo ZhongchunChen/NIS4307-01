@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import os
 import shutil
 from pathlib import Path
 from typing import Any
@@ -108,6 +109,7 @@ def _plot_metric(
     title: str,
     ylabel: str,
     plt: Any,
+    best_epoch: int | None = None,
 ) -> None:
     epochs = [record["epoch"] for record in history]
     plt.figure(figsize=(8, 5))
@@ -117,6 +119,26 @@ def _plot_metric(
         if len(values) == len(epochs):
             plt.plot(epochs, values, marker="o", label=key)
             plotted = True
+            if best_epoch is not None and best_epoch in epochs:
+                best_index = epochs.index(best_epoch)
+                best_value = values[best_index]
+                plt.scatter(
+                    [best_epoch],
+                    [best_value],
+                    color="red",
+                    s=70,
+                    zorder=5,
+                    label=f"best {key}" if len(metric_keys) == 1 else None,
+                )
+                plt.annotate(
+                    f"{best_value:.4f}",
+                    xy=(best_epoch, best_value),
+                    xytext=(8, 8),
+                    textcoords="offset points",
+                    color="red",
+                    fontsize=10,
+                    fontweight="bold",
+                )
     plt.title(title)
     plt.xlabel("epoch")
     plt.ylabel(ylabel)
@@ -138,8 +160,29 @@ def _plot_metric(
     plt.close()
 
 
-def plot_history(history: list[dict[str, Any]], output_dir: Path) -> bool:
+def find_best_epoch(
+    history: list[dict[str, Any]],
+    metric: str = "macro_f1",
+    mode: str = "max",
+) -> int | None:
+    candidates = [record for record in history if metric in record]
+    if not candidates:
+        return None
+    if mode == "min":
+        best = min(candidates, key=lambda record: record[metric])
+    else:
+        best = max(candidates, key=lambda record: record[metric])
+    return int(best["epoch"])
+
+
+def plot_history(
+    history: list[dict[str, Any]],
+    output_dir: Path,
+    best_metric: str = "macro_f1",
+    best_metric_mode: str = "max",
+) -> bool:
     try:
+        os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
         import matplotlib
 
         matplotlib.use("Agg")
@@ -149,6 +192,7 @@ def plot_history(history: list[dict[str, Any]], output_dir: Path) -> bool:
         return False
 
     plots_dir = output_dir / "plots"
+    best_epoch = find_best_epoch(history, best_metric, best_metric_mode)
     _plot_metric(
         history,
         plots_dir / "loss_curve.png",
@@ -156,6 +200,7 @@ def plot_history(history: list[dict[str, Any]], output_dir: Path) -> bool:
         "Training and Validation Loss",
         "loss",
         plt,
+        best_epoch,
     )
     _plot_metric(
         history,
@@ -164,6 +209,7 @@ def plot_history(history: list[dict[str, Any]], output_dir: Path) -> bool:
         "Validation Accuracy",
         "accuracy",
         plt,
+        best_epoch,
     )
     _plot_metric(
         history,
@@ -172,6 +218,7 @@ def plot_history(history: list[dict[str, Any]], output_dir: Path) -> bool:
         "Validation Macro-F1",
         "macro_f1",
         plt,
+        best_epoch,
     )
     _plot_metric(
         history,
@@ -180,6 +227,7 @@ def plot_history(history: list[dict[str, Any]], output_dir: Path) -> bool:
         "Gradient Norm",
         "grad_norm",
         plt,
+        best_epoch,
     )
     return True
 
@@ -302,7 +350,12 @@ def train(config: dict[str, Any]) -> None:
         }
         history.append(epoch_record)
         save_json(history, output_dir / "history.json")
-        plot_history(history, output_dir)
+        plot_history(
+            history,
+            output_dir,
+            training["early_stopping_metric"],
+            training.get("early_stopping_mode", "max"),
+        )
         print(
             f"Epoch {epoch}: train_loss={epoch_record['train_loss']:.4f}, "
             f"val_loss={metrics['loss']:.4f}, macro_f1={metrics['macro_f1']:.4f}, "
