@@ -186,8 +186,6 @@ def load_datasets(config: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, d
     if cleaning["remove_train_val_overlap"]:
         overlap_mask = val_df[text_column].isin(set(train_df[text_column]))
         val_report.overlap_rows_removed = int(overlap_mask.sum())
-        val_df = val_df[~overlap_mask].reset_index(drop=True)
-        val_report.final_rows = len(val_df)
 
     reports = {
         "train": vars(train_report),
