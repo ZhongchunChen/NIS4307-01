@@ -10,7 +10,7 @@ data:
     paths:
       - datasets/gossipcop_extra.csv
       - datasets/shared_task_extra.csv
-      - datasets/val_64pct.csv
+      - datasets/val_50pct.csv
   cleaning:
     drop_duplicate_texts: true
     remove_conflicting_texts: true
