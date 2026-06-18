@@ -59,13 +59,12 @@ outputs/bertweet/
 │   └── bertweet/              # metrics, logs, and training curves
 ├── src/
 │   ├── config.py              # config loading
-│   ├── data.py                # dataset loading and cleaning
-│   ├── evaluate.py            # evaluation entry
-│   ├── metrics.py             # classification metrics
-│   ├── plot_history.py        # plot curves from history.json
-│   ├── predict.py             # single-text prediction entry
-│   ├── train.py               # training entry
-│   └── utils.py               # shared utilities
+│   └── training/
+│       ├── data.py            # dataset loading and cleaning
+│       ├── metrics.py         # classification metrics
+│       ├── pipeline.py        # training, evaluation, and plotting logic
+│       └── utils.py           # training utilities
+├── scripts/                   # train/evaluate/predict/plot CLI wrappers
 ├── pyproject.toml             # editable package and dependencies
 └── environment.yml            # optional Conda environment file
 ```
@@ -230,13 +229,12 @@ outputs/bertweet/
 │   └── bertweet/              # 指标、日志和训练曲线
 ├── src/
 │   ├── config.py              # 配置读取
-│   ├── data.py                # 数据读取与清洗
-│   ├── evaluate.py            # 评估入口
-│   ├── metrics.py             # 分类指标
-│   ├── plot_history.py        # 根据 history.json 绘制曲线
-│   ├── predict.py             # 单条文本预测入口
-│   ├── train.py               # 训练入口
-│   └── utils.py               # 通用工具
+│   └── training/
+│       ├── data.py            # 数据读取与清洗
+│       ├── metrics.py         # 分类指标
+│       ├── pipeline.py        # 训练、评估和绘图逻辑
+│       └── utils.py           # 训练工具函数
+├── scripts/                   # 训练、评估、预测和绘图 CLI 包装
 ├── pyproject.toml             # editable package 与依赖配置
 └── environment.yml            # 可选 Conda 环境配置
 ```

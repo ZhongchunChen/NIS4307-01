@@ -16,9 +16,9 @@ from tqdm.auto import tqdm
 from transformers import AutoModel, AutoModelForSequenceClassification, AutoTokenizer
 from transformers.optimization import get_linear_schedule_with_warmup
 
-from src.data import TweetDataset, load_datasets
-from src.metrics import classification_metrics
-from src.utils import get_device, save_json, set_seed
+from src.training.data import TweetDataset, load_datasets
+from src.training.metrics import classification_metrics
+from src.training.utils import get_device, save_json, set_seed
 
 
 def build_loader(

@@ -8,8 +8,7 @@ from typing import Any
 
 import pandas as pd
 
-from src.data import normalize_text
-from src.utils import save_json
+from src.training import normalize_text, save_json
 
 
 GOSSIPCOP_NAME_PATTERN = re.compile(r"gossipcop_([hm])([rf])\.parquet$", re.IGNORECASE)

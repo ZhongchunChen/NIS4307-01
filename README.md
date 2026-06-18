@@ -44,17 +44,16 @@ NIS4307-01/
 │   ├── model.py                  # BERTweet model wrapper
 │   ├── api_service.py            # LLM multi-stage analysis service
 │   ├── rag_service.py            # Main-system wrapper for RAG evidence retrieval
-│   ├── data.py                   # Dataset loading and cleaning
-│   ├── train.py                  # Training script
-│   ├── evaluate.py               # Evaluation script
-│   ├── predict.py                # Single-text prediction CLI
-│   ├── metrics.py                # Classification metrics
-│   ├── plot_history.py           # Training curve plotting
-│   ├── utils.py                  # Shared utilities
+│   ├── training/
+│   │   ├── data.py               # Dataset loading and cleaning
+│   │   ├── metrics.py            # Classification metrics
+│   │   ├── pipeline.py           # Training, evaluation, and plotting logic
+│   │   └── utils.py              # Training utilities
 │   └── web/
 │       ├── app.py                # FastAPI application factory
 │       └── templates/
 │           └── index.html        # Jinja2 frontend page
+├── scripts/                       # CLI wrappers for train/evaluate/predict/plot
 ├── .example.env                  # Environment variable template
 ├── .gitignore                    # Git ignore rules
 ├── README.md                     # Project README

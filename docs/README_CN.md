@@ -32,17 +32,16 @@ NIS4307-01/
 │   ├── model.py                  # BERTweet 模型封装
 │   ├── api_service.py            # LLM 多阶段分析服务
 │   ├── rag_service.py            # 主系统调用 RAG 检索证据
-│   ├── data.py                   # 数据加载与清洗
-│   ├── train.py                  # 训练脚本
-│   ├── evaluate.py               # 评估脚本
-│   ├── predict.py                # 单文本预测 CLI
-│   ├── metrics.py                # 分类指标
-│   ├── plot_history.py           # 训练曲线绘制
-│   ├── utils.py                  # 通用工具
+│   ├── training/
+│   │   ├── data.py               # 数据加载与清洗
+│   │   ├── metrics.py            # 分类指标
+│   │   ├── pipeline.py           # 训练、评估和绘图逻辑
+│   │   └── utils.py              # 训练工具函数
 │   └── web/
 │       ├── app.py                # FastAPI 应用工厂
 │       └── templates/
 │           └── index.html        # Jinja2 前端页面
+├── scripts/                       # 训练、评估、预测和绘图 CLI 包装
 ├── .example.env                  # 环境变量模板
 ├── .gitignore                    # Git 忽略规则
 ├── README.md                     # 项目说明
