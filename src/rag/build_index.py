@@ -9,7 +9,10 @@
 import os
 from pathlib import Path
 
-os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+from src.rag import config
+
+if config.HF_ENDPOINT:
+    os.environ.setdefault("HF_ENDPOINT", config.HF_ENDPOINT)
 
 import pandas as pd
 import json
@@ -27,13 +30,13 @@ GOSSIPCOP_SPLITS = {
     'HR': 'data/HR-00000-of-00001-043a35ac2a425b62.parquet',
 }
 GOSSIPCOP_HF_REPO = "hf://datasets/Jinyan1/GossipCop/"
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-RAG_DATA_DIR = PROJECT_ROOT / "datasets"
+PROJECT_ROOT = config.PROJECT_ROOT
+RAG_DATA_DIR = config.RAG_DATA_ROOT
 FEVER_CLAIM_JSONL = RAG_DATA_DIR / "shared_task_dev.jsonl"  # FEVER Shared Task Development Dataset
 TRAIN_CSV = RAG_DATA_DIR / "train.csv"
 
 # ChromaDB 存储路径 —— 与 RAG 项目 config.py 中 CHROMA_DB_PATH 一致
-CHROMA_DB_DIR = RAG_DATA_DIR / "ChromaDB_data_populate" / "DataBase" / "data"
+CHROMA_DB_DIR = Path(config.CHROMA_DB_PATH)
 
 # ==========================
 # 2. 初始化 Embedding 函数

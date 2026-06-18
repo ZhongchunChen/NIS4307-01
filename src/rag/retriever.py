@@ -16,18 +16,22 @@ import os
 import re
 from typing import List, Dict, Any, Optional
 
+from src.rag import config
+
 # ----------------------------------------------------------------------
 # 设置离线模式，避免连接 huggingface.co 下载模型
 # 模型应已缓存在本地：~/.cache/huggingface/ 或 ~/.cache/torch/
 # ----------------------------------------------------------------------
-os.environ.setdefault("HF_HUB_OFFLINE", "1")
-os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+if config.HF_ENDPOINT:
+    os.environ.setdefault("HF_ENDPOINT", config.HF_ENDPOINT)
+if config.HF_HUB_OFFLINE:
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+if config.TRANSFORMERS_OFFLINE:
+    os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
 import chromadb
 from chromadb.utils import embedding_functions
 from chromadb.api.models.Collection import Collection
-
-from src.rag import config
 
 
 # ----------------------------------------------------------------------
