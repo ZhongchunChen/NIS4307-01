@@ -40,7 +40,7 @@ NIS4307-01/
 │       ├── app.py                # FastAPI 应用工厂
 │       └── templates/
 │           └── index.html        # Jinja2 前端页面
-├── scripts/                       # 训练、评估、预测和绘图 CLI 包装
+│   └── cli/                       # 训练、评估、预测和绘图 CLI 包装
 ├── .example.env                  # 环境变量模板
 ├── .gitignore                    # Git 忽略规则
 ├── README.md                     # 项目说明

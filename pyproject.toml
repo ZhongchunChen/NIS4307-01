@@ -39,14 +39,15 @@ dev = [
 ]
 
 [project.scripts]
-bertweet-train = "scripts.train:main"
-bertweet-evaluate = "scripts.evaluate:main"
-bertweet-predict = "scripts.predict:main"
-bertweet-plot-history = "scripts.plot_history:main"
+bertweet-train = "src.cli.train:main"
+bertweet-evaluate = "src.cli.evaluate:main"
+bertweet-predict = "src.cli.predict:main"
+bertweet-plot-history = "src.cli.plot_history:main"
+prepare-extra-datasets = "src.cli.prepare_extra_datasets:main"
 rag-demo = "src.rag.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["src*", "scripts*"]
+include = ["src*"]
 
 [tool.setuptools.package-data]
 "src.web" = ["templates/*.html"]

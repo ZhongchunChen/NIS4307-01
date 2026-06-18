@@ -52,7 +52,7 @@ NIS4307-01/
 │       ├── app.py                # FastAPI application factory
 │       └── templates/
 │           └── index.html        # Jinja2 frontend page
-├── scripts/                       # CLI wrappers for train/evaluate/predict/plot
+│   └── cli/                       # CLI wrappers for train/evaluate/predict/plot
 ├── .example.env                  # Environment variable template
 ├── .gitignore                    # Git ignore rules
 ├── README.md                     # Project README

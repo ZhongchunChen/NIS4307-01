@@ -64,7 +64,7 @@ outputs/bertweet/
 │       ├── metrics.py         # classification metrics
 │       ├── pipeline.py        # training, evaluation, and plotting logic
 │       └── utils.py           # training utilities
-├── scripts/                   # train/evaluate/predict/plot CLI wrappers
+│   └── cli/                   # train/evaluate/predict/plot CLI wrappers
 ├── pyproject.toml             # editable package and dependencies
 └── environment.yml            # optional Conda environment file
 ```
@@ -234,7 +234,7 @@ outputs/bertweet/
 │       ├── metrics.py         # 分类指标
 │       ├── pipeline.py        # 训练、评估和绘图逻辑
 │       └── utils.py           # 训练工具函数
-├── scripts/                   # 训练、评估、预测和绘图 CLI 包装
+│   └── cli/                   # 训练、评估、预测和绘图 CLI 包装
 ├── pyproject.toml             # editable package 与依赖配置
 └── environment.yml            # 可选 Conda 环境配置
 ```
