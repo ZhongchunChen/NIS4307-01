@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="720" viewBox="0 0 980 720">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#334155"/>
+    </marker>
+    <style>
+      .box { fill: #f8fafc; stroke: #334155; stroke-width: 2; rx: 14; }
+      .attn { fill: #dbeafe; }
+      .ffn { fill: #dcfce7; }
+      .norm { fill: #fef9c3; }
+      .res { fill: #fee2e2; }
+      .title { font: 700 22px Arial, sans-serif; fill: #0f172a; }
+      .text { font: 15px Arial, sans-serif; fill: #0f172a; }
+      .small { font: 13px Arial, sans-serif; fill: #334155; }
+      .arrow { stroke: #334155; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .skip { stroke: #64748b; stroke-width: 2; fill: none; stroke-dasharray: 7 5; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <text x="490" y="38" text-anchor="middle" class="title">Transformer Encoder Block</text>
+
+  <rect x="390" y="70" width="200" height="52" class="box"/>
+  <text x="490" y="102" text-anchor="middle" class="text">Input Hidden States</text>
+
+  <rect x="390" y="155" width="200" height="52" class="box norm"/>
+  <text x="490" y="187" text-anchor="middle" class="text">LayerNorm</text>
+
+  <rect x="150" y="245" width="180" height="58" class="box attn"/>
+  <text x="240" y="270" text-anchor="middle" class="text">Query</text>
+  <text x="240" y="291" text-anchor="middle" class="small">linear projection</text>
+
+  <rect x="400" y="245" width="180" height="58" class="box attn"/>
+  <text x="490" y="270" text-anchor="middle" class="text">Key</text>
+  <text x="490" y="291" text-anchor="middle" class="small">linear projection</text>
+
+  <rect x="650" y="245" width="180" height="58" class="box attn"/>
+  <text x="740" y="270" text-anchor="middle" class="text">Value</text>
+  <text x="740" y="291" text-anchor="middle" class="small">linear projection</text>
+
+  <rect x="330" y="350" width="320" height="64" class="box attn"/>
+  <text x="490" y="377" text-anchor="middle" class="text">Multi-Head Self-Attention</text>
+  <text x="490" y="399" text-anchor="middle" class="small">context mixing across all tokens</text>
+
+  <rect x="390" y="445" width="200" height="52" class="box res"/>
+  <text x="490" y="477" text-anchor="middle" class="text">Residual Add</text>
+
+  <rect x="390" y="530" width="200" height="52" class="box norm"/>
+  <text x="490" y="562" text-anchor="middle" class="text">LayerNorm</text>
+
+  <rect x="330" y="615" width="320" height="58" class="box ffn"/>
+  <text x="490" y="640" text-anchor="middle" class="text">Feed-Forward Network</text>
+  <text x="490" y="661" text-anchor="middle" class="small">Linear -> Activation -> Linear</text>
+
+  <rect x="720" y="615" width="170" height="58" class="box res"/>
+  <text x="805" y="640" text-anchor="middle" class="text">Residual Add</text>
+  <text x="805" y="661" text-anchor="middle" class="small">block output</text>
+
+  <path d="M490 122 L490 155" class="arrow"/>
+  <path d="M490 207 L240 245" class="arrow"/>
+  <path d="M490 207 L490 245" class="arrow"/>
+  <path d="M490 207 L740 245" class="arrow"/>
+  <path d="M240 303 L390 350" class="arrow"/>
+  <path d="M490 303 L490 350" class="arrow"/>
+  <path d="M740 303 L590 350" class="arrow"/>
+  <path d="M490 414 L490 445" class="arrow"/>
+  <path d="M490 497 L490 530" class="arrow"/>
+  <path d="M490 582 L490 615" class="arrow"/>
+  <path d="M650 644 L720 644" class="arrow"/>
+
+  <path d="M590 96 C900 96 900 470 590 470" class="skip"/>
+  <text x="850" y="270" text-anchor="middle" class="small">skip connection</text>
+
+  <path d="M590 471 C930 471 930 644 890 644" class="skip"/>
+  <text x="875" y="565" text-anchor="middle" class="small">skip connection</text>
+
+  <text x="490" y="705" text-anchor="middle" class="small">
+    Stacking many encoder blocks gives BERTweet deep bidirectional contextual representations.
+  </text>
+</svg>

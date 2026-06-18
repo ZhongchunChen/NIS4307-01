@@ -588,3 +588,8 @@ RAG/**/*.db
 .DS_Store
 Thumbs.db
 
+# Agents
+CLAUDE.md
+AGENTS.md
+.claude
+.codex

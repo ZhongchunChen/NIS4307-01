@@ -7,20 +7,57 @@
     "overlap_rows_removed": 0,
     "final_rows": 2832
   },
+  "extra_datasets": {
+    "enabled": true,
+    "datasets": {
+      "/home/pocket/homework/introuduction_to_ai/datasets/gossipcop_extra.csv": {
+        "source_rows": 4084,
+        "invalid_rows_removed": 0,
+        "conflicting_rows_removed": 0,
+        "duplicate_rows_removed": 0,
+        "overlap_rows_removed": 0,
+        "final_rows": 4084
+      },
+      "/home/pocket/homework/introuduction_to_ai/datasets/shared_task_extra.csv": {
+        "source_rows": 13086,
+        "invalid_rows_removed": 0,
+        "conflicting_rows_removed": 0,
+        "duplicate_rows_removed": 0,
+        "overlap_rows_removed": 0,
+        "final_rows": 13086
+      },
+      "/home/pocket/homework/introuduction_to_ai/datasets/val_50pct.csv": {
+        "source_rows": 200,
+        "invalid_rows_removed": 0,
+        "conflicting_rows_removed": 0,
+        "duplicate_rows_removed": 0,
+        "overlap_rows_removed": 0,
+        "final_rows": 200
+      }
+    }
+  },
+  "train_after_extra_merge": {
+    "source_rows": 20202,
+    "invalid_rows_removed": 0,
+    "conflicting_rows_removed": 0,
+    "duplicate_rows_removed": 1,
+    "overlap_rows_removed": 0,
+    "final_rows": 20201
+  },
   "val": {
     "source_rows": 401,
     "invalid_rows_removed": 0,
     "conflicting_rows_removed": 0,
     "duplicate_rows_removed": 0,
-    "overlap_rows_removed": 1,
-    "final_rows": 400
+    "overlap_rows_removed": 200,
+    "final_rows": 401
   },
   "train_label_counts": {
-    "0": 1596,
-    "1": 1236
+    "0": 8259,
+    "1": 11942
   },
   "val_label_counts": {
-    "0": 225,
+    "0": 226,
     "1": 175
   }
 }

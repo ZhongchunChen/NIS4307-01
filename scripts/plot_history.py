@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from src.config import load_config
-from src.train import plot_history
+from src.training import plot_history
 
 
 def main() -> None:
@@ -20,7 +20,13 @@ def main() -> None:
     with history_path.open("r", encoding="utf-8") as file:
         history = json.load(file)
 
-    plotted = plot_history(history, output_dir)
+    training = config["training"]
+    plotted = plot_history(
+        history,
+        output_dir,
+        training["early_stopping_metric"],
+        training.get("early_stopping_mode", "max"),
+    )
     if plotted:
         print(f"Saved plots to {output_dir / 'plots'}")
 

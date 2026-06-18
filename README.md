@@ -21,6 +21,18 @@ NIS4307-01/
 │   ├── requirements.txt          # RAG dependencies
 │   └── train.csv                 # RAG sample / auxiliary data
 ├── configs/
+│   └── bertweet.yaml          # training and model configuration
+├── datasets/
+│   ├── train.csv              # training set
+│   ├── val.csv                # validation set
+│   ├── gossipcop_extra.csv     # converted GossipCop training CSV
+│   ├── shared_task_extra.csv   # converted shared-task training CSV
+│   └── raw_data/               # original public dataset files
+├── checkpoints/
+│   ├── base/                  # cached pretrained BERTweet checkpoint
+│   └── bertweet/              # fine-tuned model checkpoints
+├── outputs/
+│   └── bertweet/              # metrics, logs, and training curves
 │   └── bertweet.yaml             # Model and training configuration
 ├── docs/
 │   ├── frontend.md               # Frontend architecture documentation
