@@ -44,3 +44,6 @@ bertweet-plot-history = "scripts.plot_history:main"
 
 [tool.setuptools.packages.find]
 include = ["src*", "scripts*"]
+
+[tool.setuptools.package-data]
+"src.web" = ["templates/*.html"]

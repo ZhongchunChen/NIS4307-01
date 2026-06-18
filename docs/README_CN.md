@@ -28,7 +28,6 @@ NIS4307-01/
 │   └── README_CN.md              # 中文 README
 ├── outputs/bertweet/             # 训练指标、曲线和评估结果
 ├── src/
-│   ├── app.py                    # FastAPI 应用工厂
 │   ├── config.py                 # 配置加载（.env + YAML）
 │   ├── model.py                  # BERTweet 模型封装
 │   ├── api_service.py            # LLM 多阶段分析服务
@@ -40,8 +39,10 @@ NIS4307-01/
 │   ├── metrics.py                # 分类指标
 │   ├── plot_history.py           # 训练曲线绘制
 │   ├── utils.py                  # 通用工具
-│   └── templates/
-│       └── index.html            # Jinja2 前端页面
+│   └── web/
+│       ├── app.py                # FastAPI 应用工厂
+│       └── templates/
+│           └── index.html        # Jinja2 前端页面
 ├── .example.env                  # 环境变量模板
 ├── .gitignore                    # Git 忽略规则
 ├── README.md                     # 项目说明

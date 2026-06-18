@@ -40,7 +40,6 @@ NIS4307-01/
 │   └── README_CN.md              # Chinese README
 ├── outputs/bertweet/             # Training metrics, plots, and evaluation outputs
 ├── src/
-│   ├── app.py                    # FastAPI application factory
 │   ├── config.py                 # Configuration loader (.env + YAML)
 │   ├── model.py                  # BERTweet model wrapper
 │   ├── api_service.py            # LLM multi-stage analysis service
@@ -52,8 +51,10 @@ NIS4307-01/
 │   ├── metrics.py                # Classification metrics
 │   ├── plot_history.py           # Training curve plotting
 │   ├── utils.py                  # Shared utilities
-│   └── templates/
-│       └── index.html            # Jinja2 frontend page
+│   └── web/
+│       ├── app.py                # FastAPI application factory
+│       └── templates/
+│           └── index.html        # Jinja2 frontend page
 ├── .example.env                  # Environment variable template
 ├── .gitignore                    # Git ignore rules
 ├── README.md                     # Project README

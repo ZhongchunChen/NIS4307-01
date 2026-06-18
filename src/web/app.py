@@ -9,6 +9,7 @@ from src.model import classify_statement
 from src.api_service import analyze_root_cause, compare_results, judge_statement
 from src.rag_service import retrieve_rag_evidence
 
+
 def create_app() -> FastAPI:
     app = FastAPI(title="Rumor Detection System")
 
@@ -39,13 +40,12 @@ def create_app() -> FastAPI:
                 "statement": statement,
                 "error": f"Classification failed: {exc}",
             })
-        
+
         # Optional Step: RAG retrieves related evidence
         try:
             rag_evidence = retrieve_rag_evidence(statement)
         except Exception:
             rag_evidence = []
-
 
         # Step 2: Stage 1 — LLM independently judges the statement
         try:

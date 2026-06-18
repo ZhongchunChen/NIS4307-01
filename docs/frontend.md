@@ -9,12 +9,13 @@ NIS4307-01/
 ├── .env                     # 环境变量（需自行创建）
 ├── .example.env             # 环境变量模板
 └── src/
-    ├── app.py               # FastAPI 应用工厂，定义路由
     ├── config.py            # 配置加载（从 .env 读取）
     ├── model.py             # ★ ML 模型（待协作者实现）
     ├── api_service.py       # LLM 三阶段分析服务
-    └── templates/
-        └── index.html       # Jinja2 前端页面
+    └── web/
+        ├── app.py           # FastAPI 应用工厂，定义路由
+        └── templates/
+            └── index.html   # Jinja2 前端页面
 ```
 
 ## 架构概览

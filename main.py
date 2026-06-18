@@ -11,7 +11,7 @@ import argparse
 
 import uvicorn
 
-from src.app import create_app
+from src.web.app import create_app
 
 
 def main() -> None:
@@ -32,8 +32,9 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.train:
-        from src.train import train
         from src.config import load_config
+        from src.training import train
+
         train(load_config("configs/bertweet.yaml"))
     else:
         app = create_app()
