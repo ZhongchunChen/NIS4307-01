@@ -10,10 +10,11 @@ NIS4307-01/
 ├── .example.env             # 环境变量模板
 └── src/
     ├── config.py            # 配置加载（从 .env 读取）
-    ├── model.py             # ★ ML 模型（待协作者实现）
-    ├── api_service.py       # LLM 三阶段分析服务
+    ├── model/
+    │   └── inference.py     # ML 模型推理封装
     └── web/
         ├── app.py           # FastAPI 应用工厂，定义路由
+        ├── llm_service.py   # LLM 三阶段分析服务
         └── templates/
             └── index.html   # Jinja2 前端页面
 ```
@@ -108,7 +109,7 @@ python main.py
 
 ## ML 模型接口（供模型组实现）
 
-**文件**：`src/model.py`
+**文件**：`src/model/inference.py`
 
 **函数签名**：
 

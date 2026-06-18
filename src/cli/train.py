@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 
 from src.config import load_config
-from src.training import train
+from src.model import train
 
 
 def parse_args() -> argparse.Namespace:

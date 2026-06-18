@@ -8,7 +8,7 @@ import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from src.config import load_config
-from src.training import get_device
+from src.model import get_device
 
 
 def main() -> None:

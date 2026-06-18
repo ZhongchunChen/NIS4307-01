@@ -12,8 +12,6 @@
 
 ```
 NIS4307-01/
-├── RAG/
-│   └── requirements.txt          # 指向统一项目依赖的包装文件
 ├── configs/
 │   └── bertweet.yaml             # 模型与训练配置
 ├── docs/
@@ -23,23 +21,23 @@ NIS4307-01/
 ├── outputs/bertweet/             # 训练指标、曲线和评估结果
 ├── src/
 │   ├── config.py                 # 配置加载（.env + YAML）
-│   ├── model.py                  # BERTweet 模型封装
-│   ├── api_service.py            # LLM 多阶段分析服务
+│   ├── model/
+│   │   ├── data.py               # 数据加载与清洗
+│   │   ├── inference.py          # BERTweet 推理封装
+│   │   ├── metrics.py            # 分类指标
+│   │   ├── pipeline.py           # 训练、评估和绘图逻辑
+│   │   └── utils.py              # 模型工具函数
 │   ├── rag/
 │   │   ├── retriever.py          # ChromaDB 证据检索器
 │   │   ├── service.py            # 主系统调用 RAG 检索证据
 │   │   ├── llm_judge.py          # RAG 独立 LLM 判断入口
 │   │   ├── cli.py                # RAG 独立运行入口
 │   │   └── config.py             # RAG 配置
-│   ├── training/
-│   │   ├── data.py               # 数据加载与清洗
-│   │   ├── metrics.py            # 分类指标
-│   │   ├── pipeline.py           # 训练、评估和绘图逻辑
-│   │   └── utils.py              # 训练工具函数
-│   └── web/
-│       ├── app.py                # FastAPI 应用工厂
-│       └── templates/
-│           └── index.html        # Jinja2 前端页面
+│   ├── web/
+│   │   ├── app.py                # FastAPI 应用工厂
+│   │   ├── llm_service.py        # LLM 多阶段分析服务
+│   │   └── templates/
+│   │       └── index.html        # Jinja2 前端页面
 │   └── cli/                       # 训练、评估、预测和绘图 CLI 包装
 ├── .example.env                  # 环境变量模板
 ├── .gitignore                    # Git 忽略规则

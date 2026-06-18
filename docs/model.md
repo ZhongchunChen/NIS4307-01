@@ -59,11 +59,12 @@ outputs/bertweet/
 │   └── bertweet/              # metrics, logs, and training curves
 ├── src/
 │   ├── config.py              # config loading
-│   └── training/
+│   └── model/
 │       ├── data.py            # dataset loading and cleaning
+│       ├── inference.py       # checkpoint inference wrapper
 │       ├── metrics.py         # classification metrics
 │       ├── pipeline.py        # training, evaluation, and plotting logic
-│       └── utils.py           # training utilities
+│       └── utils.py           # model utilities
 │   └── cli/                   # train/evaluate/predict/plot CLI wrappers
 ├── pyproject.toml             # editable package and dependencies
 └── environment.yml            # optional Conda environment file
@@ -229,11 +230,12 @@ outputs/bertweet/
 │   └── bertweet/              # 指标、日志和训练曲线
 ├── src/
 │   ├── config.py              # 配置读取
-│   └── training/
+│   └── model/
 │       ├── data.py            # 数据读取与清洗
+│       ├── inference.py       # 模型推理封装
 │       ├── metrics.py         # 分类指标
 │       ├── pipeline.py        # 训练、评估和绘图逻辑
-│       └── utils.py           # 训练工具函数
+│       └── utils.py           # 模型工具函数
 │   └── cli/                   # 训练、评估、预测和绘图 CLI 包装
 ├── pyproject.toml             # editable package 与依赖配置
 └── environment.yml            # 可选 Conda 环境配置

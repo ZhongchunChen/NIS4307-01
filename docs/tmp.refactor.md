@@ -89,7 +89,8 @@ src/rumor_detection/
 
   ml/
     data.py
-    model.py
+    inference.py
+    pipeline.py
     train.py
     evaluate.py
     predict.py

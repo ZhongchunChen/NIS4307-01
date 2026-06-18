@@ -1,7 +1,8 @@
-"""Training package for BERTweet data preparation, fitting, and evaluation."""
+"""BERTweet model package for training, evaluation, and inference."""
 
-from src.training.data import CleaningReport, TweetDataset, load_datasets, normalize_text
-from src.training.pipeline import (
+from src.model.data import CleaningReport, TweetDataset, load_datasets, normalize_text
+from src.model.inference import classify_statement
+from src.model.pipeline import (
     build_loader,
     ensure_base_checkpoint,
     evaluate,
@@ -9,12 +10,13 @@ from src.training.pipeline import (
     plot_history,
     train,
 )
-from src.training.utils import get_device, save_json, set_seed
+from src.model.utils import get_device, save_json, set_seed
 
 __all__ = [
     "CleaningReport",
     "TweetDataset",
     "build_loader",
+    "classify_statement",
     "ensure_base_checkpoint",
     "evaluate",
     "find_best_epoch",

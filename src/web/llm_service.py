@@ -1,5 +1,5 @@
 """
-API service for three-stage LLM analysis of rumor classification.
+LLM service for three-stage rumor analysis in the web demo.
 
 Stage 1: LLM independently judges the statement (no ML output seen).
 Stage 2: LLM compares its verdict with the ML result.
@@ -11,7 +11,7 @@ import re
 
 from openai import OpenAI
 
-from .config import API_BASE_URL, API_MODEL, API_SECRET
+from src.config import API_BASE_URL, API_MODEL, API_SECRET
 
 client = OpenAI(api_key=API_SECRET, base_url=API_BASE_URL)
 

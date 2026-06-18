@@ -33,7 +33,7 @@ def main() -> None:
 
     if args.train:
         from src.config import load_config
-        from src.training import train
+        from src.model import train
 
         train(load_config("configs/bertweet.yaml"))
     else:

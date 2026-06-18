@@ -12,47 +12,43 @@ This project combines a **fine-tuned BERTweet model**, **multi-stage LLM analysi
 
 ```text
 NIS4307-01/
-├── RAG/
-│   └── requirements.txt          # Wrapper for unified project dependencies
 ├── configs/
-│   └── bertweet.yaml          # training and model configuration
-├── datasets/
-│   ├── train.csv              # training set
-│   ├── val.csv                # validation set
-│   ├── gossipcop_extra.csv     # converted GossipCop training CSV
-│   ├── shared_task_extra.csv   # converted shared-task training CSV
-│   └── raw_data/               # original public dataset files
-├── checkpoints/
-│   ├── base/                  # cached pretrained BERTweet checkpoint
-│   └── bertweet/              # fine-tuned model checkpoints
-├── outputs/
-│   └── bertweet/              # metrics, logs, and training curves
 │   └── bertweet.yaml             # Model and training configuration
+├── datasets/
+│   ├── train.csv                 # Training set
+│   ├── val.csv                   # Validation set
+│   ├── gossipcop_extra.csv       # Converted GossipCop training CSV
+│   ├── shared_task_extra.csv     # Converted shared-task training CSV
+│   └── raw_data/                 # Original public dataset files
+├── checkpoints/
+│   ├── base/                    # Cached pretrained BERTweet checkpoint
+│   └── bertweet/                # Fine-tuned model checkpoints
+├── outputs/
+│   └── bertweet/                 # Metrics, logs, and training curves
 ├── docs/
 │   ├── frontend.md               # Frontend architecture documentation
 │   ├── model.md                  # Model training documentation
 │   └── README_CN.md              # Chinese README
-├── outputs/bertweet/             # Training metrics, plots, and evaluation outputs
 ├── src/
 │   ├── config.py                 # Configuration loader (.env + YAML)
-│   ├── model.py                  # BERTweet model wrapper
-│   ├── api_service.py            # LLM multi-stage analysis service
+│   ├── model/
+│   │   ├── data.py               # Dataset loading and cleaning
+│   │   ├── inference.py          # BERTweet checkpoint inference wrapper
+│   │   ├── metrics.py            # Classification metrics
+│   │   ├── pipeline.py           # Training, evaluation, and plotting logic
+│   │   └── utils.py              # Model utilities
 │   ├── rag/
 │   │   ├── retriever.py          # ChromaDB evidence retriever
 │   │   ├── service.py            # Main-system RAG evidence wrapper
 │   │   ├── llm_judge.py          # Standalone RAG + LLM judge
 │   │   ├── cli.py                # Standalone RAG CLI
 │   │   └── config.py             # RAG configuration
-│   ├── training/
-│   │   ├── data.py               # Dataset loading and cleaning
-│   │   ├── metrics.py            # Classification metrics
-│   │   ├── pipeline.py           # Training, evaluation, and plotting logic
-│   │   └── utils.py              # Training utilities
-│   └── web/
-│       ├── app.py                # FastAPI application factory
-│       └── templates/
-│           └── index.html        # Jinja2 frontend page
-│   └── cli/                       # CLI wrappers for train/evaluate/predict/plot
+│   ├── web/
+│   │   ├── app.py                # FastAPI application factory
+│   │   ├── llm_service.py        # LLM multi-stage analysis service
+│   │   └── templates/
+│   │       └── index.html        # Jinja2 frontend page
+│   └── cli/                      # CLI wrappers for train/evaluate/predict/plot
 ├── .example.env                  # Environment variable template
 ├── .gitignore                    # Git ignore rules
 ├── README.md                     # Project README

@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from src.config import load_config
-from src.training import plot_history
+from src.model import plot_history
 
 
 def main() -> None:

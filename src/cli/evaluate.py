@@ -7,7 +7,7 @@ import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from src.config import load_config
-from src.training import (
+from src.model import (
     TweetDataset,
     build_loader,
     evaluate,

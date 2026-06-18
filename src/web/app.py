@@ -6,8 +6,8 @@ from fastapi.templating import Jinja2Templates
 
 from src.config import API_MODEL
 from src.model import classify_statement
-from src.api_service import analyze_root_cause, compare_results, judge_statement
 from src.rag.service import retrieve_rag_evidence
+from src.web.llm_service import analyze_root_cause, compare_results, judge_statement
 
 
 def create_app() -> FastAPI:
