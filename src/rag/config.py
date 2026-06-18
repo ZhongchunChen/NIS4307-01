@@ -74,16 +74,17 @@ TOP_K = int(os.getenv("RAG_TOP_K", "5"))  # 每个 collection 检索的 top-k，
 # 4) OpenAI 兼容接口配置
 # ----------------------------------------------------------------------
 
-OPENAI_API_KEY = os.getenv("RAG_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("API_SECRET", "")
+# RAG standalone judging intentionally reuses the main LLM settings.
+OPENAI_API_KEY = os.getenv("API_SECRET", "")
 
-OPENAI_API_BASE = os.getenv("RAG_OPENAI_API_BASE") or os.getenv("OPENAI_API_BASE") or os.getenv("API", "https://models.sjtu.edu.cn/api/v1/")
+OPENAI_API_BASE = os.getenv("API", "https://models.sjtu.edu.cn/api/v1/")
 
-OPENAI_MODEL_NAME = os.getenv("RAG_OPENAI_MODEL") or os.getenv("OPENAI_MODEL") or os.getenv("API_MODEL", "deepseek-chat")
+OPENAI_MODEL_NAME = os.getenv("API_MODEL", "deepseek-reasoner")
 
 # LLM 调用参数
-LLM_TEMPERATURE = float(os.getenv("RAG_LLM_TEMPERATURE", "0.2"))
-LLM_MAX_TOKENS = int(os.getenv("RAG_LLM_MAX_TOKENS", "512"))
-LLM_TIMEOUT = int(os.getenv("RAG_LLM_TIMEOUT", "60"))  # 秒
+LLM_TEMPERATURE = 0.2
+LLM_MAX_TOKENS = 512
+LLM_TIMEOUT = 60  # 秒
 
 # ----------------------------------------------------------------------
 # 5) 标签规范化（label normalization）

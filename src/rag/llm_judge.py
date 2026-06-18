@@ -125,8 +125,8 @@ def _call_openai(messages: List[Dict[str, str]]) -> str:
     raise RuntimeError(
         "调用 OpenAI 兼容接口失败：openai SDK 与 requests 兜底均报错。\n"
         f"最后一次错误: {last_err}\n"
-        "请检查：1) 是否在 config.py 中设置了 OPENAI_API_KEY；"
-        "2) OPENAI_API_BASE / OPENAI_MODEL_NAME 是否正确；"
+        "请检查：1) 是否在 .env 中设置了 API_SECRET；"
+        "2) API / API_MODEL 是否正确；"
         "3) 网络是否可达。"
     )
 
@@ -220,7 +220,7 @@ def judge(query: str, evidence: List[Dict[str, Any]]) -> Dict[str, Any]:
             print(f"[warn] 调用 OpenAI 兼容接口出错，将走兜底: {e}")
             parsed = None
     else:
-        print("[info] 未配置 OPENAI_API_KEY，使用证据多数投票兜底。")
+        print("[info] 未配置 API_SECRET，使用证据多数投票兜底。")
 
     if parsed:
         label = str(parsed.get("label", "")).strip().lower()
