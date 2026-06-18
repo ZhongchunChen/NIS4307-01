@@ -7,7 +7,7 @@ chroma_retriever.py
   - 使用与建库一致的 embedding function
   - 返回 top-k 证据（document / label / source / distance）
 
-兼容 chromadb 0.4.x 和 1.x
+兼容当前发布的 ChromaDB 数据库 schema（1.x）。
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ import chromadb
 from chromadb.utils import embedding_functions
 from chromadb.api.models.Collection import Collection
 
-import config
+from src.rag import config
 
 
 # ----------------------------------------------------------------------
@@ -65,7 +65,7 @@ def _truncate(text: str, limit: int = 400) -> str:
 class ChromaRetriever:
     """
     加载 ChromaDB 并提供 top-k 检索能力。
-    兼容 chromadb 0.4.x 和 1.x
+    兼容当前发布的 ChromaDB 数据库 schema（1.x）。
     """
 
     def __init__(
@@ -117,6 +117,12 @@ class ChromaRetriever:
         try:
             all_cols = self.client.list_collections()
         except Exception as e:
+            if "collections.topic" in str(e):
+                raise RuntimeError(
+                    "ChromaDB schema/client mismatch: this database no longer has "
+                    "collections.topic. Install the unified environment with "
+                    "`chromadb>=1.0,<2`, then retry."
+                ) from e
             raise RuntimeError(f"列出 ChromaDB collection 失败: {e}") from e
 
         names: List[str] = []

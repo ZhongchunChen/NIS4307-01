@@ -12,14 +12,8 @@ This project combines a **fine-tuned BERTweet model**, **multi-stage LLM analysi
 
 ```text
 NIS4307-01/
-├── RAG/                         # RAG module and ChromaDB retrieval code
-│   ├── chroma_retriever.py       # ChromaDB retriever
-│   ├── config.py                 # RAG configuration
-│   ├── em.py                     # Embedding / vectorization utilities
-│   ├── llm_judge.py              # Standalone RAG + LLM judging script
-│   ├── main.py                   # Standalone RAG entry point
-│   ├── requirements.txt          # RAG dependencies
-│   └── train.csv                 # RAG sample / auxiliary data
+├── RAG/
+│   └── requirements.txt          # Wrapper for unified project dependencies
 ├── configs/
 │   └── bertweet.yaml          # training and model configuration
 ├── datasets/
@@ -43,7 +37,12 @@ NIS4307-01/
 │   ├── config.py                 # Configuration loader (.env + YAML)
 │   ├── model.py                  # BERTweet model wrapper
 │   ├── api_service.py            # LLM multi-stage analysis service
-│   ├── rag_service.py            # Main-system wrapper for RAG evidence retrieval
+│   ├── rag/
+│   │   ├── retriever.py          # ChromaDB evidence retriever
+│   │   ├── service.py            # Main-system RAG evidence wrapper
+│   │   ├── llm_judge.py          # Standalone RAG + LLM judge
+│   │   ├── cli.py                # Standalone RAG CLI
+│   │   └── config.py             # RAG configuration
 │   ├── training/
 │   │   ├── data.py               # Dataset loading and cleaning
 │   │   ├── metrics.py            # Classification metrics
@@ -221,16 +220,16 @@ See https://claw.sjtu.edu.cn/guide/sjtu-api/ for setup instructions.
 
 ### Optional: Enable RAG Evidence Retrieval
 
-RAG code is located under `RAG/`. The ChromaDB database is large and is not stored directly in the Git repository. To enable RAG in the frontend:
+RAG Python code is packaged under `src/rag/`. The ChromaDB database is large and is not stored directly in the Git repository. To enable RAG in the frontend:
 
 1. Open the GitHub **Releases** page.
 2. Download `ChromaDB_data_populate.zip` from the release named **ChromaDB database for RAG**.
-3. Extract the zip file into the `RAG/` directory.
+3. Extract the zip file into the `datasets/` directory.
 
 After extraction, the path should look like:
 
 ```text
-RAG/ChromaDB_data_populate/DataBase/data
+datasets/ChromaDB_data_populate/DataBase/data
 ```
 
 When RAG is correctly configured, the frontend will display a **RAG Retrieved Evidence** section after analysis. If the database or dependencies are missing, the main app still runs without RAG evidence.
@@ -238,8 +237,7 @@ When RAG is correctly configured, the frontend will display a **RAG Retrieved Ev
 You can also run the standalone RAG demo:
 
 ```bash
-cd RAG
-python main.py
+python -m src.rag.cli
 ```
 
 ### Launch the Frontend

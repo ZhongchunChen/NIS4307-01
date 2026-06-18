@@ -7,6 +7,8 @@
 """
 
 import os
+from pathlib import Path
+
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 import pandas as pd
@@ -25,18 +27,13 @@ GOSSIPCOP_SPLITS = {
     'HR': 'data/HR-00000-of-00001-043a35ac2a425b62.parquet',
 }
 GOSSIPCOP_HF_REPO = "hf://datasets/Jinyan1/GossipCop/"
-FEVER_CLAIM_JSONL = "G:/rag/data/shared_task_dev.jsonl"  # FEVER Shared Task Development Dataset
-TRAIN_CSV = os.path.join(os.path.dirname(os.path.abspath(__file__)), "train.csv")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+RAG_DATA_DIR = PROJECT_ROOT / "datasets"
+FEVER_CLAIM_JSONL = RAG_DATA_DIR / "shared_task_dev.jsonl"  # FEVER Shared Task Development Dataset
+TRAIN_CSV = RAG_DATA_DIR / "train.csv"
 
 # ChromaDB 存储路径 —— 与 RAG 项目 config.py 中 CHROMA_DB_PATH 一致
-CHROMA_DB_DIR = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "..",
-    "Retrieval-Augmented-Generation-for-news-main",
-    "ChromaDB_data_populate",
-    "DataBase",
-    "data",
-)
+CHROMA_DB_DIR = RAG_DATA_DIR / "ChromaDB_data_populate" / "DataBase" / "data"
 
 # ==========================
 # 2. 初始化 Embedding 函数
@@ -48,7 +45,7 @@ embedding_fn = embedding_functions.DefaultEmbeddingFunction()
 # ==========================
 # 3. 初始化 ChromaDB
 # ==========================
-client = chromadb.PersistentClient(path=CHROMA_DB_DIR)
+client = chromadb.PersistentClient(path=str(CHROMA_DB_DIR))
 
 # 创建集合（先删除已有的，确保数据完整）
 for name in ["gossipcop", "fever_claims", "train"]:

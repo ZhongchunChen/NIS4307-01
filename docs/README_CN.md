@@ -12,14 +12,8 @@
 
 ```
 NIS4307-01/
-├── RAG/                         # RAG 模块与 ChromaDB 检索代码
-│   ├── chroma_retriever.py       # ChromaDB 检索器
-│   ├── config.py                 # RAG 配置
-│   ├── em.py                     # 向量化 / embedding 相关代码
-│   ├── llm_judge.py              # RAG 独立 LLM 判断入口
-│   ├── main.py                   # RAG 独立运行入口
-│   ├── requirements.txt          # RAG 模块依赖
-│   └── train.csv                 # RAG 示例 / 辅助数据
+├── RAG/
+│   └── requirements.txt          # 指向统一项目依赖的包装文件
 ├── configs/
 │   └── bertweet.yaml             # 模型与训练配置
 ├── docs/
@@ -31,7 +25,12 @@ NIS4307-01/
 │   ├── config.py                 # 配置加载（.env + YAML）
 │   ├── model.py                  # BERTweet 模型封装
 │   ├── api_service.py            # LLM 多阶段分析服务
-│   ├── rag_service.py            # 主系统调用 RAG 检索证据
+│   ├── rag/
+│   │   ├── retriever.py          # ChromaDB 证据检索器
+│   │   ├── service.py            # 主系统调用 RAG 检索证据
+│   │   ├── llm_judge.py          # RAG 独立 LLM 判断入口
+│   │   ├── cli.py                # RAG 独立运行入口
+│   │   └── config.py             # RAG 配置
 │   ├── training/
 │   │   ├── data.py               # 数据加载与清洗
 │   │   ├── metrics.py            # 分类指标
@@ -99,7 +98,7 @@ NIS4307-01/
 
 ### RAG 检索增强模块
 
-RAG 模块使用 ChromaDB 向量数据库进行相似证据检索。用户输入文本后，系统会调用 `src/rag_service.py`，从 `RAG/` 目录下的 ChromaDB 数据库中检索若干条相关证据。检索结果会被传入 LLM prompt，作为生成判断依据和分歧分析时的参考信息。
+RAG 模块使用 ChromaDB 向量数据库进行相似证据检索。用户输入文本后，系统会调用 `src/rag/service.py`，从 `datasets/` 目录下的 ChromaDB 数据库中检索若干条相关证据。检索结果会被传入 LLM prompt，作为生成判断依据和分歧分析时的参考信息。
 
 RAG 模块不直接改变 BERTweet 模型输出的 0/1 分类结果，而是作为解释增强模块，为 LLM 提供外部证据或相似样本。若 RAG 数据库、依赖或本地路径不可用，系统会自动返回空 evidence，主流程仍可退化为原有的 BERTweet + LLM 分析流程。
 
@@ -164,7 +163,7 @@ python -m src.predict --config configs/bertweet.yaml --text "示例文本"
 
 ## RAG 模块运行说明
 
-RAG 代码位于 `RAG/` 目录下，主系统已经通过 `src/rag_service.py` 将其作为可选辅助模块接入 LLM 分析流程。
+RAG Python 代码位于 `src/rag/` 包中，主系统已经通过 `src/rag/service.py` 将其作为可选辅助模块接入 LLM 分析流程。
 
 由于 ChromaDB 向量数据库文件较大，未直接提交到仓库中，而是通过 GitHub Release 提供。运行 RAG 功能前，需要在 Releases 页面下载：
 
@@ -172,34 +171,22 @@ RAG 代码位于 `RAG/` 目录下，主系统已经通过 `src/rag_service.py` �
 ChromaDB_data_populate.zip
 ```
 
-下载后将其解压到 `RAG/` 目录下。解压后的目录结构应类似：
+下载后将其解压到 `datasets/` 目录下。解压后的目录结构应类似：
 
 ```
-RAG/
-├── chroma_retriever.py
-├── config.py
-├── main.py
-├── requirements.txt
-├── ...
+datasets/
 └── ChromaDB_data_populate/
     └── DataBase/
         └── data/
 ```
 
-安装 RAG 依赖：
-
-```bash
-cd RAG
-pip install -r requirements.txt
-```
-
 独立运行 RAG 模块：
 
 ```bash
-python main.py
+python -m src.rag.cli
 ```
 
-在主系统中启用 RAG 时，只需确保 `RAG/ChromaDB_data_populate/DataBase/data` 路径存在。若该数据库不存在，主系统不会崩溃，但页面中不会展示 RAG 检索证据。
+在主系统中启用 RAG 时，只需确保 `datasets/ChromaDB_data_populate/DataBase/data` 路径存在。若该数据库不存在，主系统不会崩溃，但页面中不会展示 RAG 检索证据。
 
 ## 环境配置
 
@@ -215,13 +202,6 @@ conda activate intro2ai
 或 pip：
 
 ```bash
-pip install -r requirements.txt
-```
-
-如果需要独立运行 RAG 模块，还需进入 `RAG/` 目录安装其依赖：
-
-```bash
-cd RAG
 pip install -r requirements.txt
 ```
 

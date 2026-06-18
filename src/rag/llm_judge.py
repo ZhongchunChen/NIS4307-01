@@ -23,7 +23,7 @@ import re
 from collections import Counter
 from typing import List, Dict, Any, Optional, Tuple
 
-import config
+from src.rag import config
 
 
 # ----------------------------------------------------------------------
@@ -270,7 +270,7 @@ def judge(query: str, evidence: List[Dict[str, Any]]) -> Dict[str, Any]:
 # 命令行调试
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
-    from chroma_retriever import ChromaRetriever
+    from src.rag.retriever import ChromaRetriever
 
     print("加载 ChromaDB ...")
     r = ChromaRetriever()

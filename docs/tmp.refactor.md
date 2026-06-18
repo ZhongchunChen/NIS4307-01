@@ -110,11 +110,11 @@ src/rumor_detection/
     config.py
 ```
 
-This gives you one environment, one import system, and clean boundaries. The modules remain discrete, but integration is easier and you avoid the current `sys.path.insert()` in `src/rag_service.py`.
+This gives you one environment, one import system, and clean boundaries. The modules remain discrete, but integration is easier and avoids ad hoc `sys.path` mutations for RAG imports.
 
 **Additional Improvement Suggestions**
 
-- Replace hard-coded RAG config/API keys in `RAG/config.py` with `.env` variables.
+- Replace hard-coded RAG config/API keys in `src/rag/config.py` with `.env` variables.
 - Standardize env names: use one scheme such as `LLM_API_BASE`, `LLM_API_KEY`, `LLM_MODEL`, `RAG_DB_PATH`, `RAG_TOP_K`.
 - Expand `main.py` into subcommands: `train`, `evaluate`, `predict`, `serve`, maybe `rag-query`.
 - Add `--config`, `--host`, `--port`, `--checkpoint`, and `--no-rag` options.

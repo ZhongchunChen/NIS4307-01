@@ -8,16 +8,20 @@ OpenAI 兼容接口配置：
 - API_KEY
 """
 
-import os
 from pathlib import Path
+import os
 
 # ----------------------------------------------------------------------
 # 1) ChromaDB 相关
 # ----------------------------------------------------------------------
 # ChromaDB 持久化目录的绝对路径。
-# 路径是相对于本文件所在的项目根目录解析的，避免因 cwd 不一致出错。
-PROJECT_ROOT = Path(__file__).resolve().parent
-CHROMA_DB_PATH = str(PROJECT_ROOT / "ChromaDB_data_populate" / "DataBase" / "data")
+# 默认从仓库根目录下的 datasets/ 目录解析，避免因 cwd 不一致出错。
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+RAG_DATA_ROOT = PROJECT_ROOT / "datasets"
+CHROMA_DB_PATH = os.getenv(
+    "RAG_CHROMA_DB_PATH",
+    str(RAG_DATA_ROOT / "ChromaDB_data_populate" / "DataBase" / "data"),
+)
 
 # 关键字过滤：自动列出 ChromaDB 中所有 collection 时，
 # 只保留名字中含以下任一关键字的 collection。
@@ -36,17 +40,17 @@ EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 # ----------------------------------------------------------------------
 # 3) 检索相关
 # ----------------------------------------------------------------------
-TOP_K = 5  # 每个 collection 检索的 top-k，最终合并后取 TOP_K
+TOP_K = int(os.getenv("RAG_TOP_K", "5"))  # 每个 collection 检索的 top-k，最终合并后取 TOP_K
 
 # ----------------------------------------------------------------------
 # 4) OpenAI 兼容接口配置
 # ----------------------------------------------------------------------
 
-OPENAI_API_KEY = ""  # 请在这里填写你的 API Key
+OPENAI_API_KEY = os.getenv("RAG_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("API_SECRET", "")
 
-OPENAI_API_BASE = "https://models.sjtu.edu.cn/api/v1/"
+OPENAI_API_BASE = os.getenv("RAG_OPENAI_API_BASE") or os.getenv("OPENAI_API_BASE") or os.getenv("API", "https://models.sjtu.edu.cn/api/v1/")
 
-OPENAI_MODEL_NAME = "deepseek-chat"
+OPENAI_MODEL_NAME = os.getenv("RAG_OPENAI_MODEL") or os.getenv("OPENAI_MODEL") or os.getenv("API_MODEL", "deepseek-chat")
 
 # LLM 调用参数
 LLM_TEMPERATURE = 0.2
@@ -73,4 +77,8 @@ NORMALIZE_RULES = {
 # ----------------------------------------------------------------------
 # 如果没有配置 API_KEY，是否允许用「证据多数投票」做兜底分类。
 # 设为 True 时，无 LLM 也能返回一个 label，但 confidence 会偏低。
-FALLBACK_MAJORITY_VOTE = False
+FALLBACK_MAJORITY_VOTE = os.getenv("RAG_FALLBACK_MAJORITY_VOTE", "false").lower() in {
+    "1",
+    "true",
+    "yes",
+}

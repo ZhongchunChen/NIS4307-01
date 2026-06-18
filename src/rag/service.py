@@ -11,16 +11,7 @@ def retrieve_rag_evidence(statement: str, top_k: int = 3) -> list[dict[str, Any]
     so the main system can still run.
     """
     try:
-        import sys
-        from pathlib import Path
-
-        project_root = Path(__file__).resolve().parents[1]
-        rag_dir = project_root / "RAG"
-
-        if str(rag_dir) not in sys.path:
-            sys.path.insert(0, str(rag_dir))
-
-        from chroma_retriever import ChromaRetriever
+        from src.rag.retriever import ChromaRetriever
 
         retriever = ChromaRetriever()
         evidence = retriever.retrieve(statement, top_k=top_k)

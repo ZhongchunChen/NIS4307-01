@@ -10,9 +10,9 @@ main.py
   4) 输出固定 JSON
 
 用法：
-  python main.py "Breaking news: the queen is dead."
+  python -m src.rag.cli "Breaking news: the queen is dead."
 
-  python main.py          # 进入交互式输入
+  python -m src.rag.cli          # 进入交互式输入
 """
 
 from __future__ import annotations
@@ -22,9 +22,9 @@ import sys
 import traceback
 from typing import Any, Dict, List
 
-import config
-from chroma_retriever import ChromaRetriever
-from llm_judge import judge
+from src.rag import config
+from src.rag.llm_judge import judge
+from src.rag.retriever import ChromaRetriever
 
 
 # ----------------------------------------------------------------------
@@ -105,7 +105,8 @@ def run_once(query: str) -> Dict[str, Any]:
     return build_output(query, evidence, judge_result)
 
 
-def main(argv: List[str]) -> int:
+def main(argv: List[str] | None = None) -> int:
+    argv = sys.argv if argv is None else argv
     if len(argv) >= 2:
         # 命令行参数优先
         query = " ".join(argv[1:]).strip()

@@ -1,3 +1,0 @@
-# Compatibility wrapper for older RAG setup instructions.
-# The unified project environment is defined in ../pyproject.toml.
--r ../requirements.txt

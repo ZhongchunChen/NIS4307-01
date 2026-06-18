@@ -555,7 +555,7 @@ TSWLatexianTemp*
 
 .env
 checkpoints/
-datasets/
+datasets/*
 *.py[cod]
 
 ### PROJECT-SPECIFIC FILES
@@ -567,18 +567,9 @@ datasets/
 __pycache__/
 *.pyc
 
-# Model caches and large checkpoints
-checkpoints/base/
 # If the fine-tuned model is distributed via Release or regenerated locally,
 # uncomment the next line to keep it out of Git.
 # checkpoints/bertweet/
-
-# RAG local vector database. Download ChromaDB_data_populate.zip from GitHub Releases
-# and extract it to RAG/ when running the RAG module locally.
-RAG/ChromaDB_data_populate/
-RAG/**/*.sqlite3
-RAG/**/*.sqlite
-RAG/**/*.db
 
 # Local runtime / cache directories
 .cache/
