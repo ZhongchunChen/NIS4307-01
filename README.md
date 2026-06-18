@@ -182,18 +182,30 @@ python -m src.predict --config configs/bertweet.yaml --text "Example text"
 
 ### Install Dependencies
 
-Conda (recommended):
+Conda is the recommended setup path. It creates a Python 3.10 environment and installs this repository in editable mode from `pyproject.toml`, including the frontend, BERTweet model, LLM API client, and RAG dependencies.
 
 ```bash
 conda env create -f environment.yml
 conda activate intro2ai
 ```
 
-Or pip:
+If the environment already exists, update it after dependency changes:
 
 ```bash
-pip install -r requirements.txt
+conda env update -f environment.yml --prune
+conda activate intro2ai
 ```
+
+Pip-only setup is also supported for users who do not use Conda:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+`pyproject.toml` is the canonical dependency list. `requirements.txt` and `RAG/requirements.txt` are compatibility wrappers, so do not maintain separate frontend/model/RAG environments.
 
 ### Configure LLM API
 
@@ -219,14 +231,6 @@ After extraction, the path should look like:
 
 ```text
 RAG/ChromaDB_data_populate/DataBase/data
-```
-
-Install RAG-specific dependencies if needed:
-
-```bash
-cd RAG
-pip install -r requirements.txt
-cd ..
 ```
 
 When RAG is correctly configured, the frontend will display a **RAG Retrieved Evidence** section after analysis. If the database or dependencies are missing, the main app still runs without RAG evidence.

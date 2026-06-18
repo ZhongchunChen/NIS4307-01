@@ -5,20 +5,35 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "intro2ai-bertweet"
 version = "0.1.0"
-description = "BERTweet binary classifier for short tweet text."
+description = "Integrated rumor detection system with BERTweet, FastAPI, LLM analysis, and optional RAG."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+  "chromadb>=0.4.22,<0.5",
   "emoji>=2.12,<3",
+  "fastapi>=0.110,<1",
+  "jinja2>=3.1,<4",
   "matplotlib>=3.8,<4",
   "numpy>=1.26,<3",
+  "openai>=1.0,<2",
+  "onnxruntime>=1.16,<2",
   "pandas>=2.1,<3",
   "pyarrow>=15,<22",
+  "python-dotenv>=1.0,<2",
   "PyYAML>=6.0,<7",
+  "requests>=2.31,<3",
   "scikit-learn>=1.4,<2",
+  "sentence-transformers>=3.0,<4",
   "torch>=2.3,<3",
   "tqdm>=4.66,<5",
   "transformers>=4.44,<5",
+  "uvicorn[standard]>=0.29,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8,<9",
+  "ruff>=0.5,<1",
 ]
 
 [project.scripts]
