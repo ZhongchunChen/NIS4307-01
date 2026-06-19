@@ -1,7 +1,7 @@
 """BERTweet model package for training, evaluation, and inference."""
 
 from src.model.data import CleaningReport, TweetDataset, load_datasets, normalize_text
-from src.model.inference import classify_statement
+from src.model.inference import classify_statement, configure_inference
 from src.model.pipeline import (
     build_loader,
     ensure_base_checkpoint,
@@ -17,6 +17,7 @@ __all__ = [
     "TweetDataset",
     "build_loader",
     "classify_statement",
+    "configure_inference",
     "ensure_base_checkpoint",
     "evaluate",
     "find_best_epoch",

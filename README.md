@@ -150,13 +150,14 @@ Edit `configs/bertweet.yaml` to adjust hyperparameters and paths. Key options:
 | `data.val_path` | `datasets/val.csv` | Validation set path |
 | `training.epochs` | 16 | Number of epochs |
 | `training.learning_rate` | 1e-5 | Learning rate |
-| `training.early_stopping_metric` | `macro_f1` | Early stopping metric |
 | `training.early_stopping_patience` | 2 | Early stopping patience |
+
+The best checkpoint and early stopping are always selected by maximum validation macro-F1. Validation loss is still recorded and plotted as a training diagnostic.
 
 ### Run Training
 
 ```bash
-python main.py --train
+python main.py train
 ```
 
 The first run downloads `vinai/bertweet-base` from Hugging Face and caches it at `checkpoints/base/`. The best model is saved to `checkpoints/bertweet/best_model/`, with plots and metrics in `outputs/bertweet/`.
@@ -164,13 +165,13 @@ The first run downloads `vinai/bertweet-base` from Hugging Face and caches it at
 ### Evaluate
 
 ```bash
-python -m src.evaluate --config configs/bertweet.yaml
+python main.py evaluate --config configs/bertweet.yaml
 ```
 
 ### Predict via CLI
 
 ```bash
-python -m src.predict --config configs/bertweet.yaml --text "Example text"
+python main.py predict --config configs/bertweet.yaml --text "Example text"
 ```
 
 ## Setup
@@ -197,10 +198,10 @@ Pip-only setup is also supported for users who do not use Conda:
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+python -m pip install -e .
 ```
 
-`pyproject.toml` is the canonical dependency list. `requirements.txt` and `RAG/requirements.txt` are compatibility wrappers, so do not maintain separate frontend/model/RAG environments.
+`pyproject.toml` is the canonical dependency list, so do not maintain separate frontend/model/RAG environments.
 
 ### Configure LLM API
 
@@ -233,22 +234,130 @@ When RAG is correctly configured, the frontend will display a **RAG Retrieved Ev
 You can also run the standalone RAG demo:
 
 ```bash
-python -m src.rag.cli
+python main.py rag query "Breaking news: the queen is dead."
 ```
 
 ### Launch the Frontend
 
 ```bash
-python main.py
+python main.py serve
 ```
 
 Listens on `0.0.0.0:8000`. Open `http://localhost:8000` in a browser.
 
-### CLI Options
+## CLI Reference
 
+`main.py` is the unified entry point for serving, training, evaluation, prediction, data preparation, plotting, and standalone RAG queries.
+
+### Usage
+
+```bash
+python main.py [GLOBAL_OPTIONS] COMMAND [COMMAND_OPTIONS]
 ```
-python main.py              Start the frontend (default)
-python main.py --display    Start the frontend
-python main.py --train      Train the model
-python main.py --help       Show help
+
+Global options must appear before the command. The `--config` option may instead appear after commands that use the model configuration.
+
+```bash
+python main.py --config configs/bertweet.yaml train
+python main.py train --config configs/bertweet.yaml
 ```
+
+### Global Options
+
+| Option | Description |
+|--------|-------------|
+| `--config PATH` | Default model/training config path. Defaults to `configs/bertweet.yaml`. |
+| `--env-file PATH` | Environment file to load. Defaults to `.env`. |
+| `--log-level LEVEL` | One of `CRITICAL`, `ERROR`, `WARNING`, `INFO`, or `DEBUG`. Defaults to `INFO`. |
+| `--debug` | Show full tracebacks on command failure. |
+
+### Commands
+
+| Command | Purpose |
+|---------|---------|
+| `serve` | Start the FastAPI/Jinja frontend. |
+| `train` | Train the BERTweet classifier. |
+| `evaluate` | Evaluate a checkpoint on validation data or a labeled CSV. |
+| `predict` | Classify one statement. |
+| `prepare-data` | Convert and combine the supported public datasets. |
+| `plot-history` | Generate training plots from a history JSON file. |
+| `rag query` | Run standalone RAG retrieval and LLM judgment. |
+
+**Serve**
+
+```bash
+python main.py serve [--config PATH] [--host HOST] [--port PORT] [--reload]
+                     [--checkpoint PATH] [--device DEVICE]
+                     [--no-rag] [--no-llm] [--mock-model]
+```
+
+The server binds to `0.0.0.0:8000` by default and accepts ports from `1` to `65535`. `--no-rag` and `--no-llm` disable those stages, while `--mock-model` starts the app without loading a trained classifier.
+
+**Train**
+
+```bash
+python main.py train [--config PATH] [--device DEVICE] [--epochs N]
+                     [--output-dir PATH] [--checkpoint-dir PATH]
+```
+
+Values not supplied on the command line come from the selected YAML configuration. `--epochs` must be greater than zero.
+
+**Evaluate**
+
+```bash
+python main.py evaluate [--config PATH] [--test FILE.csv]
+                        [--checkpoint PATH] [--device DEVICE] [--output FILE.json]
+```
+
+Without `--test`, the configured validation dataset is evaluated. Without `--checkpoint`, the command loads `<training.checkpoint_dir>/best_model`.
+
+**Predict**
+
+```bash
+python main.py predict "Statement to classify" [--config PATH]
+                       [--checkpoint PATH] [--device DEVICE] [--json]
+```
+
+Text can also be passed with `--text "Statement to classify"`. Use `--json` for machine-readable output.
+
+**Prepare Data**
+
+```bash
+python main.py prepare-data [--input-dir PATH] [--output-dir PATH]
+                            [--shared-task FILE.jsonl]
+                            [--gossipcop-output FILE.csv]
+                            [--shared-task-output FILE.csv]
+                            [--combined-output FILE.csv]
+                            [--gossipcop-text-fields FIELD [FIELD ...]]
+```
+
+Defaults are `datasets/raw_data` for input, `datasets` for output, and `title description text` for the GossipCop text fields.
+
+**Plot History**
+
+```bash
+python main.py plot-history [--config PATH] [--history FILE.json]
+                            [--output-dir PATH]
+```
+
+By default, the command reads `history.json` from the configured training output directory and writes plots under its `plots/` subdirectory.
+
+**RAG Query**
+
+```bash
+python main.py rag query "Statement to investigate" [--top-k N] [--json]
+```
+
+`--top-k` overrides the configured retrieval count for the query and must be greater than zero. The frontend uses the same `RAG_TOP_K` default. `--json` suppresses diagnostic output and prints only the result object.
+
+### Help and Compatibility
+
+Display the top-level help or the options for a specific command:
+
+```bash
+python main.py --help
+python main.py COMMAND --help
+python main.py rag query --help
+```
+
+Running `python main.py` starts the server. The older `--display` and `--train` flags remain supported as aliases for `serve` and `train`.

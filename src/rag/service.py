@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 
-def retrieve_rag_evidence(statement: str, top_k: int = 3) -> list[dict[str, Any]]:
+def retrieve_rag_evidence(statement: str, top_k: int | None = None) -> list[dict[str, Any]]:
     """
     Optional RAG evidence retrieval.
 
@@ -11,10 +11,14 @@ def retrieve_rag_evidence(statement: str, top_k: int = 3) -> list[dict[str, Any]
     so the main system can still run.
     """
     try:
+        from src.rag import config
         from src.rag.retriever import ChromaRetriever
 
         retriever = ChromaRetriever()
-        evidence = retriever.retrieve(statement, top_k=top_k)
+        evidence = retriever.retrieve(
+            statement,
+            top_k=config.TOP_K if top_k is None else top_k,
+        )
         print(f"[RAG] retrieved {len(evidence)} evidence items")
         return evidence
 

@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
@@ -10,7 +11,30 @@ from src.rag.service import retrieve_rag_evidence
 from src.web.llm_service import analyze_root_cause, compare_results, judge_statement
 
 
-def create_app() -> FastAPI:
+def _env_enabled(name: str, default: bool = True) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.lower() in {"1", "true", "yes", "on"}
+
+
+def create_runtime_app() -> FastAPI:
+    """Build the app inside a Uvicorn reload worker."""
+    from src.model import configure_inference
+
+    configure_inference(
+        config_path=os.getenv("RUMOR_CONFIG_PATH", "configs/bertweet.yaml"),
+        checkpoint=os.getenv("RUMOR_CHECKPOINT_PATH") or None,
+        device=os.getenv("RUMOR_DEVICE") or None,
+        force_mock=_env_enabled("RUMOR_FORCE_MOCK", False),
+    )
+    return create_app(
+        enable_rag=_env_enabled("RUMOR_ENABLE_RAG"),
+        enable_llm=_env_enabled("RUMOR_ENABLE_LLM"),
+    )
+
+
+def create_app(enable_rag: bool = True, enable_llm: bool = True) -> FastAPI:
     app = FastAPI(title="Rumor Detection System")
 
     templates_dir = Path(__file__).parent / "templates"
@@ -41,11 +65,30 @@ def create_app() -> FastAPI:
                 "error": f"Classification failed: {exc}",
             })
 
-        # Optional Step: RAG retrieves related evidence
-        try:
-            rag_evidence = retrieve_rag_evidence(statement)
-        except Exception:
-            rag_evidence = []
+        rag_evidence = []
+        if enable_rag:
+            try:
+                rag_evidence = retrieve_rag_evidence(statement)
+            except Exception:
+                rag_evidence = []
+
+        if not enable_llm:
+            label = "RUMOR" if raw_result["is_rumor"] else "NOT RUMOR"
+            return templates.TemplateResponse(request, "index.html", {
+                "model_name": API_MODEL,
+                "statement": statement,
+                "ml_is_rumor": raw_result["is_rumor"],
+                "ml_confidence": raw_result["confidence"],
+                "llm_label": "DISABLED",
+                "llm_is_rumor": raw_result["is_rumor"],
+                "agreement": True,
+                "llm_reasoning": f"LLM analysis is disabled. ML-only verdict: {label}.",
+                "supporting_indicators": [],
+                "comparison_summary": "LLM comparison is disabled.",
+                "root_cause_analysis": "No LLM root-cause analysis was generated.",
+                "key_indicators": [],
+                "rag_evidence": rag_evidence,
+            })
 
         # Step 2: Stage 1 — LLM independently judges the statement
         try:

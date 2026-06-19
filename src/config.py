@@ -8,6 +8,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def load_config(config_path: str | Path) -> dict[str, Any]:
@@ -15,7 +16,7 @@ def load_config(config_path: str | Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as file:
         config = yaml.safe_load(file)
 
-    project_root = path.parent.parent
+    project_root = PROJECT_ROOT
     config["_config_path"] = str(path)
     config["_project_root"] = str(project_root)
 

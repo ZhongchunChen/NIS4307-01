@@ -22,6 +22,32 @@ _tokenizer: AutoTokenizer | None = None
 _model: AutoModelForSequenceClassification | None = None
 _device: torch.device | None = None
 _max_length: int = 128
+_config_path: str | Path = "configs/bertweet.yaml"
+_checkpoint_path: str | Path | None = None
+_device_name: str | None = None
+_force_mock: bool = False
+
+
+def configure_inference(
+    config_path: str | Path | None = None,
+    checkpoint: str | Path | None = None,
+    device: str | None = None,
+    force_mock: bool = False,
+) -> None:
+    """Configure lazy-loaded inference for the web app or CLI callers."""
+    global _tokenizer, _model, _device, _max_length
+    global _config_path, _checkpoint_path, _device_name, _force_mock
+
+    if config_path is not None:
+        _config_path = config_path
+    _checkpoint_path = checkpoint
+    _device_name = device
+    _force_mock = force_mock
+
+    _tokenizer = None
+    _model = None
+    _device = None
+    _max_length = 128
 
 
 def _ensure_model_loaded() -> None:
@@ -30,9 +56,13 @@ def _ensure_model_loaded() -> None:
     if _model is not None:
         return
 
-    config = load_config("configs/bertweet.yaml")
+    config = load_config(_config_path)
     training = config["training"]
-    checkpoint = Path(training["checkpoint_dir"]) / "best_model"
+    checkpoint = (
+        Path(_checkpoint_path)
+        if _checkpoint_path is not None
+        else Path(training["checkpoint_dir"]) / "best_model"
+    )
 
     if not checkpoint.exists():
         raise FileNotFoundError(
@@ -40,7 +70,7 @@ def _ensure_model_loaded() -> None:
             "Train the model first or provide the checkpoint directory."
         )
 
-    _device = get_device(training.get("device", "auto"))
+    _device = get_device(_device_name or training.get("device", "auto"))
     _max_length = config["model"]["max_length"]
     _tokenizer = AutoTokenizer.from_pretrained(str(checkpoint))
     _model = AutoModelForSequenceClassification.from_pretrained(str(checkpoint)).to(_device)
@@ -54,6 +84,9 @@ def classify_statement(statement: str) -> dict[str, int | float]:
     Returns:
         {"is_rumor": int, "confidence": float}
     """
+    if _force_mock:
+        return _mock_classify(statement)
+
     try:
         _ensure_model_loaded()
     except FileNotFoundError:

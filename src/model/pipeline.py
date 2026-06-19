@@ -162,24 +162,17 @@ def _plot_metric(
 
 def find_best_epoch(
     history: list[dict[str, Any]],
-    metric: str = "macro_f1",
-    mode: str = "max",
 ) -> int | None:
-    candidates = [record for record in history if metric in record]
+    candidates = [record for record in history if "macro_f1" in record]
     if not candidates:
         return None
-    if mode == "min":
-        best = min(candidates, key=lambda record: record[metric])
-    else:
-        best = max(candidates, key=lambda record: record[metric])
+    best = max(candidates, key=lambda record: record["macro_f1"])
     return int(best["epoch"])
 
 
 def plot_history(
     history: list[dict[str, Any]],
     output_dir: Path,
-    best_metric: str = "macro_f1",
-    best_metric_mode: str = "max",
 ) -> bool:
     try:
         os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
@@ -192,7 +185,7 @@ def plot_history(
         return False
 
     plots_dir = output_dir / "plots"
-    best_epoch = find_best_epoch(history, best_metric, best_metric_mode)
+    best_epoch = find_best_epoch(history)
     _plot_metric(
         history,
         plots_dir / "loss_curve.png",
@@ -350,12 +343,7 @@ def train(config: dict[str, Any]) -> None:
         }
         history.append(epoch_record)
         save_json(history, output_dir / "history.json")
-        plot_history(
-            history,
-            output_dir,
-            training["early_stopping_metric"],
-            training.get("early_stopping_mode", "max"),
-        )
+        plot_history(history, output_dir)
         print(
             f"Epoch {epoch}: train_loss={epoch_record['train_loss']:.4f}, "
             f"val_loss={metrics['loss']:.4f}, macro_f1={metrics['macro_f1']:.4f}, "
@@ -363,7 +351,7 @@ def train(config: dict[str, Any]) -> None:
             f"avg_grad_norm={epoch_record['avg_grad_norm']:.4f}"
         )
 
-        score = float(metrics[training["early_stopping_metric"]])
+        score = float(metrics["macro_f1"])
         if score > best_score:
             best_score = score
             epochs_without_improvement = 0
@@ -372,7 +360,7 @@ def train(config: dict[str, Any]) -> None:
             save_json(metrics, output_dir / "best_metrics.json")
             shutil.copy2(config["_config_path"], output_dir / "config.yaml")
             shutil.copy2(config["_config_path"], checkpoint_dir / "config.yaml")
-            print(f"Saved best model with {training['early_stopping_metric']}={score:.4f}")
+            print(f"Saved best model with macro_f1={score:.4f}")
         else:
             epochs_without_improvement += 1
             if epochs_without_improvement >= training["early_stopping_patience"]:

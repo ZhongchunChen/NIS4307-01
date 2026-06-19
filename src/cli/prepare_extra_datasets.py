@@ -4,11 +4,10 @@ import argparse
 import json
 import re
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import pandas as pd
-
-from src.model import normalize_text, save_json
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 GOSSIPCOP_NAME_PATTERN = re.compile(r"gossipcop_([hm])([rf])\.parquet$", re.IGNORECASE)
@@ -18,6 +17,10 @@ FEVER_LABEL = {"SUPPORTS": 0, "REFUTES": 1}
 
 
 def clean_binary_dataframe(dataframe: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
+    import pandas as pd
+
+    from src.model import normalize_text
+
     source_rows = len(dataframe)
     dataframe = dataframe.dropna(subset=["text", "label"]).copy()
     dataframe["text"] = dataframe["text"].astype(str).map(normalize_text)
@@ -47,6 +50,10 @@ def clean_binary_dataframe(dataframe: pd.DataFrame) -> tuple[pd.DataFrame, dict[
 
 
 def combine_text_fields(row: pd.Series, fields: list[str]) -> str:
+    import pandas as pd
+
+    from src.model import normalize_text
+
     parts = []
     for field in fields:
         value = row.get(field)
@@ -62,6 +69,8 @@ def convert_gossipcop(
     output_path: Path,
     text_fields: list[str],
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
+    import pandas as pd
+
     frames = []
     file_reports: dict[str, Any] = {}
     for path in sorted(input_dir.glob("gossipcop_*.parquet")):
@@ -111,6 +120,8 @@ def convert_gossipcop(
 
 
 def convert_shared_task(input_path: Path, output_path: Path) -> tuple[pd.DataFrame, dict[str, Any]]:
+    import pandas as pd
+
     rows = []
     skipped_labels: dict[str, int] = {}
     with input_path.open("r", encoding="utf-8") as file:
@@ -157,24 +168,34 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> None:
-    args = parse_args()
-    input_dir = Path(args.input_dir)
-    output_dir = Path(args.output_dir)
+def run(
+    input_path: str,
+    output_path: str,
+    shared_task_path: str,
+    gossipcop_output: str,
+    shared_task_output: str,
+    combined_output: str,
+    gossipcop_text_fields: list[str],
+) -> dict[str, Any]:
+    import pandas as pd
 
+    from src.model import save_json
+
+    input_dir = Path(input_path)
+    output_dir = Path(output_path)
     gossip_df, gossip_report = convert_gossipcop(
         input_dir,
-        output_dir / args.gossipcop_output,
-        args.gossipcop_text_fields,
+        output_dir / gossipcop_output,
+        gossipcop_text_fields,
     )
     shared_df, shared_report = convert_shared_task(
-        Path(args.shared_task),
-        output_dir / args.shared_task_output,
+        Path(shared_task_path),
+        output_dir / shared_task_output,
     )
 
     combined = pd.concat([gossip_df, shared_df], ignore_index=True)
     combined, combined_report = clean_binary_dataframe(combined)
-    combined_path = output_dir / args.combined_output
+    combined_path = output_dir / combined_output
     combined.to_csv(combined_path, index=False)
 
     report = {
@@ -182,8 +203,8 @@ def main() -> None:
         "shared_task": shared_report,
         "combined": combined_report,
         "outputs": {
-            "gossipcop": str(output_dir / args.gossipcop_output),
-            "shared_task": str(output_dir / args.shared_task_output),
+            "gossipcop": str(output_dir / gossipcop_output),
+            "shared_task": str(output_dir / shared_task_output),
             "combined": str(combined_path),
         },
         "label_mapping": {
@@ -193,6 +214,20 @@ def main() -> None:
     }
     save_json(report, output_dir / "extra_datasets_report.json")
     print(json.dumps(report, ensure_ascii=False, indent=2))
+    return report
+
+
+def main() -> None:
+    args = parse_args()
+    run(
+        args.input_dir,
+        args.output_dir,
+        args.shared_task,
+        args.gossipcop_output,
+        args.shared_task_output,
+        args.combined_output,
+        args.gossipcop_text_fields,
+    )
 
 
 if __name__ == "__main__":

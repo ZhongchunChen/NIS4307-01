@@ -136,8 +136,9 @@ text,label
 | `data.val_path` | `datasets/val.csv` | 验证集路径 |
 | `training.epochs` | 16 | 训练轮数 |
 | `training.learning_rate` | 1e-5 | 学习率 |
-| `training.early_stopping_metric` | `macro_f1` | 早停监控指标 |
 | `training.early_stopping_patience` | 2 | 早停 patience |
+
+最佳检查点与早停均固定使用验证集 macro-F1 的最大值。验证损失仍会被记录并绘图，用于观察训练过程。
 
 ### 开始训练
 
