@@ -10,6 +10,9 @@ OpenAI 兼容接口配置：
 
 from pathlib import Path
 import os
+import shutil
+import tempfile
+import zipfile
 
 from dotenv import load_dotenv
 
@@ -40,6 +43,77 @@ CHROMA_DB_PATH = os.getenv(
     str(RAG_DATA_ROOT / "ChromaDB_data_populate" / "DataBase" / "data"),
 )
 CHROMA_DB_PATH = str(_project_path(CHROMA_DB_PATH))
+CHROMA_HF_REPO_ID = os.getenv(
+    "RAG_CHROMA_HF_REPO_ID",
+    "MingchenDai/NIS4307-ChromaDB_data_populate",
+)
+CHROMA_HF_REPO_TYPE = os.getenv("RAG_CHROMA_HF_REPO_TYPE", "dataset")
+CHROMA_HF_REVISION = os.getenv("RAG_CHROMA_HF_REVISION", "main")
+CHROMA_HF_ARCHIVE = os.getenv(
+    "RAG_CHROMA_HF_ARCHIVE",
+    "ChromaDB_data_populate.zip",
+)
+
+
+def is_chroma_database(path: str | Path) -> bool:
+    return (Path(path) / "chroma.sqlite3").is_file()
+
+
+def _safe_extract_zip(archive_path: str | Path, destination: Path) -> None:
+    destination_root = destination.resolve()
+    with zipfile.ZipFile(archive_path) as archive:
+        for member in archive.infolist():
+            member_path = (destination / member.filename).resolve()
+            if destination_root not in member_path.parents and member_path != destination_root:
+                raise ValueError(f"Unsafe path in ChromaDB archive: {member.filename}")
+        archive.extractall(destination)
+
+
+def ensure_chroma_database(db_path: str | Path | None = None) -> str:
+    """Return a local ChromaDB path, downloading and extracting it when absent."""
+    resolved_path = Path(db_path or CHROMA_DB_PATH).expanduser()
+    if is_chroma_database(resolved_path):
+        return str(resolved_path)
+
+    from huggingface_hub import hf_hub_download
+    from huggingface_hub.errors import LocalEntryNotFoundError
+
+    download_args = {
+        "repo_id": CHROMA_HF_REPO_ID,
+        "filename": CHROMA_HF_ARCHIVE,
+        "repo_type": CHROMA_HF_REPO_TYPE,
+        "revision": CHROMA_HF_REVISION,
+    }
+    try:
+        archive_path = hf_hub_download(**download_args, local_files_only=True)
+    except LocalEntryNotFoundError:
+        archive_path = hf_hub_download(**download_args)
+
+    resolved_path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(
+        prefix="chromadb-extract-",
+        dir=resolved_path.parent,
+    ) as temporary_dir:
+        extraction_root = Path(temporary_dir)
+        _safe_extract_zip(archive_path, extraction_root)
+        candidates = list(extraction_root.rglob("chroma.sqlite3"))
+        if len(candidates) != 1:
+            raise ValueError(
+                "ChromaDB archive must contain exactly one chroma.sqlite3 file; "
+                f"found {len(candidates)}"
+            )
+        extracted_db = candidates[0].parent
+        if resolved_path.exists():
+            if is_chroma_database(resolved_path):
+                return str(resolved_path)
+            raise FileExistsError(
+                f"Cannot install ChromaDB over incomplete directory: {resolved_path}"
+            )
+        shutil.move(str(extracted_db), str(resolved_path))
+
+    if not is_chroma_database(resolved_path):
+        raise FileNotFoundError(f"Extracted ChromaDB is incomplete at {resolved_path}")
+    return str(resolved_path)
 
 # 关键字过滤：自动列出 ChromaDB 中所有 collection 时，
 # 只保留名字中含以下任一关键字的 collection。

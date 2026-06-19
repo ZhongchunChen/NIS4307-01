@@ -18,6 +18,9 @@ from typing import List, Dict, Any, Optional
 
 from src.rag import config
 
+if not config.is_chroma_database(config.CHROMA_DB_PATH):
+    config.ensure_chroma_database()
+
 # ----------------------------------------------------------------------
 # 设置离线模式，避免连接 huggingface.co 下载模型
 # 模型应已缓存在本地：~/.cache/huggingface/ 或 ~/.cache/torch/
@@ -78,7 +81,7 @@ class ChromaRetriever:
         embedding_model: Optional[str] = None,
         keywords: Optional[List[str]] = None,
     ):
-        self.db_path = db_path or config.CHROMA_DB_PATH
+        self.db_path = db_path or config.ensure_chroma_database()
         self.embedding_model = embedding_model or config.EMBEDDING_MODEL_NAME
         # 关键字统一小写
         self.keywords = [k.lower() for k in (keywords if keywords is not None else config.COLLECTION_KEYWORDS)]

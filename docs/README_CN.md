@@ -96,13 +96,15 @@ API_MODEL=deepseek-reasoner
 
 ### 启用 RAG
 
-从项目 Releases 页面下载 `ChromaDB_data_populate.zip`，解压后确保数据库位于：
+项目首先在以下位置查找数据库：
 
 ```text
 datasets/ChromaDB_data_populate/DataBase/data
 ```
 
-RAG 为可选功能。数据库不可用时，Web 应用仍可在没有检索证据的情况下运行。
+如果本地数据库不存在，系统会从配置的 Hugging Face 仓库下载 `ChromaDB_data_populate.zip`（默认仓库为 `MingchenDai/NIS4307-ChromaDB_data_populate`），安全解压到上述位置，并在后续运行中复用。可通过 `RAG_CHROMA_HF_REPO_ID`、`RAG_CHROMA_HF_REVISION`、`RAG_CHROMA_HF_REPO_TYPE` 和 `RAG_CHROMA_HF_ARCHIVE` 修改仓库及文件配置。
+
+RAG 为可选功能。数据库无法下载或加载时，Web 应用仍可在没有检索证据的情况下运行。
 
 ## 运行 Web 演示
 

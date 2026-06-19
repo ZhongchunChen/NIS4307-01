@@ -104,13 +104,15 @@ API_MODEL=deepseek-reasoner
 
 ### Enable RAG
 
-Download `ChromaDB_data_populate.zip` from the project Releases page and extract it so the database is located at:
+The project first looks for the database at:
 
 ```text
 datasets/ChromaDB_data_populate/DataBase/data
 ```
 
-RAG is optional. If the database is unavailable, the web application can continue without retrieved evidence.
+If it is missing, `ChromaDB_data_populate.zip` is downloaded from the configured Hugging Face repository (`MingchenDai/NIS4307-ChromaDB_data_populate` by default), safely extracted to that location, and reused on later runs. The repository, revision, type, and archive filename can be overridden with `RAG_CHROMA_HF_REPO_ID`, `RAG_CHROMA_HF_REVISION`, `RAG_CHROMA_HF_REPO_TYPE`, and `RAG_CHROMA_HF_ARCHIVE`.
+
+RAG is optional. If the database cannot be downloaded or loaded, the web application continues without retrieved evidence.
 
 ## Run the Web Demo
 
