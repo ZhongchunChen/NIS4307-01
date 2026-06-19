@@ -132,7 +132,7 @@ def classify_statement(statement: str) -> dict[str, int | float]:
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `is_rumor` | `int` | `0` = 非谣言，`1` = 谣言 |
+| `is_rumor` | `int` | `0` = 非谣言，`1` = 谣言（发布时未经证实，不一定最终为假） |
 | `confidence` | `float` | 可选置信度，范围为 `0.0` 到 `1.0` |
 
 示例：

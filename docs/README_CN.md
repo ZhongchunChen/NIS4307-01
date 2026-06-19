@@ -54,7 +54,7 @@ python -m pip install -e .
 checkpoints/bertweet/best_model/
 ```
 
-如果该目录不存在，项目会下载 `model.huggingface_checkpoint` 配置的微调检查点。本地训练成功后生成的检查点会自动优先使用。训练数据至少需要包含 `text` 和 `label` 两列，其中 `0` 表示非谣言，`1` 表示谣言。
+如果该目录不存在，项目会下载 `model.huggingface_checkpoint` 配置的微调检查点。本地训练成功后生成的检查点会自动优先使用。训练数据至少需要包含 `text` 和 `label` 两列，其中 `0` 表示非谣言，`1` 表示谣言。这里采用 PHEME 风格的标注，表示信息发布时是否未经证实；“谣言”不等同于最终被判定为虚假。
 
 ```csv
 text,label

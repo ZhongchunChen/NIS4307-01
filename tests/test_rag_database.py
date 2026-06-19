@@ -26,6 +26,16 @@ def test_importing_retriever_does_not_resolve_database(
     ensure_database.assert_not_called()
 
 
+def test_pheme_numeric_labels_match_classifier_semantics() -> None:
+    from src.rag.retriever import _normalize_label
+
+    assert config.PHEME_LABELS == {0: "non-rumor", 1: "rumor"}
+    assert _normalize_label(0) == "real"
+    assert _normalize_label(1) == "fake"
+    assert _normalize_label(config.PHEME_LABELS[0]) == "real"
+    assert _normalize_label(config.PHEME_LABELS[1]) == "fake"
+
+
 def test_rag_cli_help_does_not_resolve_database(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -87,3 +97,56 @@ def test_missing_chroma_database_is_downloaded_and_extracted(
         revision="v1",
         local_files_only=True,
     )
+
+
+def test_rag_cli_reports_database_failure_as_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.rag import cli
+
+    monkeypatch.setattr(
+        cli,
+        "ChromaRetriever",
+        Mock(side_effect=RuntimeError("database unavailable")),
+    )
+
+    result = cli.run_once("claim")
+
+    assert result["label"] == "unavailable"
+    assert result["confidence"] == 0.0
+    assert "database unavailable" in result["reason"]
+
+
+def test_rag_cli_returns_failure_status_for_unavailable_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.rag import cli
+
+    monkeypatch.setattr(
+        cli,
+        "run_once",
+        Mock(
+            return_value={
+                "label": "unavailable",
+                "confidence": 0.0,
+                "reason": "database unavailable",
+                "evidence": [],
+            }
+        ),
+    )
+
+    assert cli.main(["rag-demo", "claim"]) == 1
+
+
+def test_rag_judge_without_llm_or_fallback_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.rag import llm_judge
+
+    monkeypatch.setattr(config, "OPENAI_API_KEY", "")
+    monkeypatch.setattr(config, "FALLBACK_MAJORITY_VOTE", False)
+
+    result = llm_judge.judge("claim", [])
+
+    assert result["label"] == "unavailable"
+    assert result["confidence"] == 0.0

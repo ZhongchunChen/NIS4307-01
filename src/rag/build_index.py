@@ -132,8 +132,8 @@ df_train = pd.read_csv(TRAIN_CSV)
 # text 列作为文档内容
 df_train['content'] = df_train['text'].fillna('')
 
-# label: 1 -> real, 0 -> fake
-df_train['label_str'] = df_train['label'].map({1: 'real', 0: 'fake'})
+# PHEME binary label: 1 -> rumor, 0 -> non-rumor.
+df_train['label_str'] = df_train['label'].map(config.PHEME_LABELS)
 
 # 添加到 ChromaDB（让 chromadb 内部自动调用 embedding_fn 生成向量）
 for i in tqdm(range(0, len(df_train), chroma_batch_size), desc="Adding train to ChromaDB"):

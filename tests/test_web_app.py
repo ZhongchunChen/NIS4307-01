@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 from unittest.mock import Mock
 
 from fastapi import FastAPI, Request
@@ -26,7 +27,10 @@ def _analyze(app: FastAPI, statement: str) -> Response:
             "server": ("test", 80),
         }
     )
-    return asyncio.run(route.endpoint(request, statement))
+    response = route.endpoint(request, statement)
+    if inspect.isawaitable(response):
+        return asyncio.run(response)
+    return response
 
 
 def test_invalid_llm_verdict_renders_unavailable(monkeypatch) -> None:
@@ -41,6 +45,7 @@ def test_invalid_llm_verdict_renders_unavailable(monkeypatch) -> None:
     monkeypatch.setattr(web_app, "compare_results", compare)
     monkeypatch.setattr(web_app, "analyze_root_cause", analyze)
     app = web_app.create_app(enable_rag=False, enable_llm=True)
+    analyze_route = next(route for route in app.routes if route.path == "/analyze")
 
     response = _analyze(app, "Example claim")
     response_text = response.body.decode()
@@ -51,6 +56,7 @@ def test_invalid_llm_verdict_renders_unavailable(monkeypatch) -> None:
     assert "agree on this verdict" not in response_text
     compare.assert_not_called()
     analyze.assert_not_called()
+    assert not inspect.iscoroutinefunction(analyze_route.endpoint)
 
 
 def test_missing_comparison_does_not_claim_agreement(monkeypatch) -> None:

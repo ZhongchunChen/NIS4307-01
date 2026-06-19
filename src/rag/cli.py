@@ -55,10 +55,20 @@ def _evidence_to_schema(evidence: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 def build_output(query: str, evidence: List[Dict[str, Any]], judge_result: Dict[str, Any]) -> Dict[str, Any]:
     """组装最终对外的固定 JSON 结构。"""
     return {
-        "label": judge_result.get("label", "fake"),
+        "label": judge_result.get("label", "unavailable"),
         "confidence": judge_result.get("confidence", 0.0),
         "reason": judge_result.get("reason", ""),
         "evidence": _evidence_to_schema(evidence),
+    }
+
+
+def unavailable_output(reason: str) -> Dict[str, Any]:
+    """Return an explicit infrastructure/error result without a false verdict."""
+    return {
+        "label": "unavailable",
+        "confidence": 0.0,
+        "reason": reason,
+        "evidence": [],
     }
 
 
@@ -73,12 +83,7 @@ def run_once(query: str) -> Dict[str, Any]:
     except Exception as e:
         msg = f"无法加载 ChromaDB: {e}"
         print(f"[error] {msg}")
-        return {
-            "label": "fake",
-            "confidence": 0.0,
-            "reason": msg + "；无法判断。",
-            "evidence": [],
-        }
+        return unavailable_output(msg + "；无法判断。")
     print(f"      使用的 collection: {retriever.list_collections()}")
 
     print("\n[2/3] 检索 top-k 证据 ...")
@@ -86,12 +91,7 @@ def run_once(query: str) -> Dict[str, Any]:
         evidence = retriever.retrieve(query, top_k=config.TOP_K)
     except Exception as e:
         traceback.print_exc()
-        return {
-            "label": "fake",
-            "confidence": 0.0,
-            "reason": f"检索过程出错: {e}；无法判断。",
-            "evidence": [],
-        }
+        return unavailable_output(f"检索过程出错: {e}；无法判断。")
 
     print(f"      检索到 {len(evidence)} 条证据：")
     for ev in evidence:
@@ -143,7 +143,7 @@ def main(argv: List[str] | None = None) -> int:
     except Exception as e:
         print(f"\n[error] 输出 JSON 无法被解析: {e}")
         return 1
-    return 0
+    return 1 if result.get("label") == "unavailable" else 0
 
 
 if __name__ == "__main__":

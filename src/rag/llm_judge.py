@@ -183,7 +183,7 @@ def _majority_vote(evidence: List[Dict[str, Any]]) -> Tuple[str, float, str]:
 
     if not weights:
         # 全是 nei / 未知
-        return "fake", 0.3, "证据不足，所有检索到的样本都没有明确真假标签，作为不确定性兜底默认 fake。"
+        return "unavailable", 0.0, "证据不足，检索结果没有明确真假标签，无法判断。"
 
     label = weights.most_common(1)[0][0]
     total = sum(weights.values())
@@ -225,11 +225,12 @@ def judge(query: str, evidence: List[Dict[str, Any]]) -> Dict[str, Any]:
     if parsed:
         label = str(parsed.get("label", "")).strip().lower()
         if label not in ("real", "fake"):
+            invalid_label = label
             label, conf, reason = _majority_vote(evidence)
             return {
                 "label": label,
                 "confidence": conf,
-                "reason": reason + f"（LLM 输出 label 非法: {label!r}）",
+                "reason": reason + f"（LLM 输出 label 非法: {invalid_label!r}）",
                 "_raw_llm": raw_text,
             }
         try:
@@ -259,7 +260,7 @@ def judge(query: str, evidence: List[Dict[str, Any]]) -> Dict[str, Any]:
 
     # 完全没有任何兜底
     return {
-        "label": "fake",
+        "label": "unavailable",
         "confidence": 0.0,
         "reason": "LLM 不可用且未开启兜底，无法判断。",
         "_raw_llm": raw_text,

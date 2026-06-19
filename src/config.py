@@ -68,12 +68,17 @@ def resolve_checkpoint_path(
         "revision": huggingface_config.get("revision", "main"),
     }
     try:
-        cached_path = snapshot_download(**download_args, local_files_only=True)
-        if _is_complete_checkpoint(cached_path):
-            return cached_path
-    except LocalEntryNotFoundError:
-        pass
-    downloaded_path = snapshot_download(**download_args)
+        try:
+            cached_path = snapshot_download(**download_args, local_files_only=True)
+            if _is_complete_checkpoint(cached_path):
+                return cached_path
+        except LocalEntryNotFoundError:
+            pass
+        downloaded_path = snapshot_download(**download_args)
+    except Exception as exc:
+        raise FileNotFoundError(
+            f"Unable to resolve the Hugging Face checkpoint {repo_id!r}"
+        ) from exc
     if not _is_complete_checkpoint(downloaded_path):
         raise FileNotFoundError(
             f"Downloaded Hugging Face checkpoint is incomplete at {downloaded_path}"

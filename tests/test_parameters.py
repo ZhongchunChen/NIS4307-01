@@ -156,12 +156,41 @@ def test_frontend_rag_uses_shared_top_k(monkeypatch: pytest.MonkeyPatch) -> None
     retriever = Mock()
     retriever.retrieve.return_value = []
     retriever_module = ModuleType("src.rag.retriever")
-    retriever_module.ChromaRetriever = Mock(return_value=retriever)  # type: ignore[attr-defined]
+    retriever_factory = Mock(return_value=retriever)
+    retriever_module.ChromaRetriever = retriever_factory  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "src.rag.retriever", retriever_module)
     monkeypatch.setattr(rag_config, "TOP_K", 9)
+    rag_service.clear_rag_retriever_cache()
 
     assert rag_service.retrieve_rag_evidence("statement") == []
-    retriever.retrieve.assert_called_once_with("statement", top_k=9)
+    assert rag_service.retrieve_rag_evidence("another statement") == []
+    retriever_factory.assert_called_once_with()
+    assert retriever.retrieve.call_args_list == [
+        (("statement",), {"top_k": 9}),
+        (("another statement",), {"top_k": 9}),
+    ]
+    rag_service.clear_rag_retriever_cache()
+
+
+def test_unified_rag_command_returns_failure_for_unavailable_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.rag import cli
+
+    monkeypatch.setattr(
+        cli,
+        "run_once",
+        Mock(
+            return_value={
+                "label": "unavailable",
+                "confidence": 0.0,
+                "reason": "database unavailable",
+                "evidence": [],
+            }
+        ),
+    )
+
+    assert main.main(["rag", "query", "claim", "--json"]) == 1
 
 
 def test_custom_config_paths_resolve_from_project_root(
@@ -389,3 +418,49 @@ def test_missing_local_checkpoint_uses_huggingface_snapshot(
         revision="v1",
         local_files_only=True,
     )
+
+
+def test_remote_checkpoint_failure_becomes_file_not_found(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from src.config import resolve_checkpoint_path
+
+    class LocalCacheMiss(Exception):
+        pass
+
+    snapshot_download = Mock(
+        side_effect=[LocalCacheMiss("not cached"), RuntimeError("network unavailable")]
+    )
+    hub_module = ModuleType("huggingface_hub")
+    hub_module.snapshot_download = snapshot_download  # type: ignore[attr-defined]
+    errors_module = ModuleType("huggingface_hub.errors")
+    errors_module.LocalEntryNotFoundError = LocalCacheMiss  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "huggingface_hub", hub_module)
+    monkeypatch.setitem(sys.modules, "huggingface_hub.errors", errors_module)
+    config = {
+        "training": {"checkpoint_dir": str(tmp_path / "missing")},
+        "model": {"huggingface_checkpoint": {"repo_id": "owner/model"}},
+    }
+
+    with pytest.raises(FileNotFoundError, match="Unable to resolve"):
+        resolve_checkpoint_path(config)
+
+
+def test_inference_uses_mock_when_checkpoint_loading_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.model import inference
+
+    mock_result = {"is_rumor": 1, "confidence": 0.75}
+    inference.configure_inference(force_mock=False)
+    monkeypatch.setattr(
+        inference,
+        "_ensure_model_loaded",
+        Mock(side_effect=OSError("corrupt checkpoint")),
+    )
+    mock_classifier = Mock(return_value=mock_result)
+    monkeypatch.setattr(inference, "_mock_classify", mock_classifier)
+
+    assert inference.classify_statement("claim") == mock_result
+    mock_classifier.assert_called_once_with("claim")

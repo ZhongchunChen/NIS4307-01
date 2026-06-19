@@ -165,13 +165,35 @@ LLM_TIMEOUT = 60  # 秒
 # ----------------------------------------------------------------------
 # 把数据库中五花八门的 label 字符串 / 数字统一归并为 real / fake / nei。
 # 用户规则：
-#   - GossipCop: 0/fake/false -> fake ; 1/real/true -> real
+#   - PHEME classifier data: 0 -> non-rumour ; 1 -> rumour
+#     The standalone real/fake judge reduces those labels to real/fake downstream.
+#   - GossipCop: fake/false -> fake ; real/true -> real
 #   - FEVER:     SUPPORTS/SUPPORTED -> real ; REFUTES/REFUTED -> fake
 #                NOT ENOUGH INFO / NEI / unverified -> nei
 # 规则匹配在 NORMALIZE_RULES 中以 (keywords, target) 的形式列出。
+PHEME_LABELS = {0: "non-rumor", 1: "rumor"}
 NORMALIZE_RULES = {
-    "real": {"1", "real", "true", "supported", "supports", "verifiable", "verifies"},
-    "fake": {"0", "fake", "false", "refuted", "refutes", "unverifiable"},
+    "real": {
+        "0",
+        "non-rumor",
+        "non-rumour",
+        "real",
+        "true",
+        "supported",
+        "supports",
+        "verifiable",
+        "verifies",
+    },
+    "fake": {
+        "1",
+        "rumor",
+        "rumour",
+        "fake",
+        "false",
+        "refuted",
+        "refutes",
+        "unverifiable",
+    },
     "nei":  {"nei", "not enough info", "not_enough_info", "unverified"},
 }
 

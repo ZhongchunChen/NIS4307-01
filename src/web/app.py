@@ -55,7 +55,7 @@ def create_app(enable_rag: bool = True, enable_llm: bool = True) -> FastAPI:
         })
 
     @app.post("/analyze", response_class=HTMLResponse)
-    async def analyze(request: Request, statement: str = Form(...)):
+    def analyze(request: Request, statement: str = Form(...)):
         statement = statement.strip()
         if not statement:
             return templates.TemplateResponse(request, "index.html", {

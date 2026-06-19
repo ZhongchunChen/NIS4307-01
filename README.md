@@ -62,7 +62,7 @@ Real inference and evaluation prefer a locally trained checkpoint at:
 checkpoints/bertweet/best_model/
 ```
 
-If that directory is absent, the project downloads the fine-tuned checkpoint configured under `model.huggingface_checkpoint`. A successful local training run takes precedence automatically. To train, the datasets must contain `text` and `label` columns, where `0` means not rumor and `1` means rumor.
+If that directory is absent, the project downloads the fine-tuned checkpoint configured under `model.huggingface_checkpoint`. A successful local training run takes precedence automatically. To train, the datasets must contain `text` and `label` columns, where `0` means non-rumor and `1` means rumor. These are PHEME-style annotations of whether a claim was unverified when posted; a rumor is not necessarily ultimately false.
 
 ```csv
 text,label

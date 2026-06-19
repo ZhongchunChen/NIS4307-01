@@ -123,7 +123,7 @@ def plot_training_history(args: argparse.Namespace) -> None:
     run(_config_path(args), args.history, args.output_dir)
 
 
-def rag_query(args: argparse.Namespace) -> None:
+def rag_query(args: argparse.Namespace) -> int:
     from src.rag import cli as rag_cli
     from src.rag import config as rag_config
 
@@ -142,6 +142,7 @@ def rag_query(args: argparse.Namespace) -> None:
         result = rag_cli.run_once(query)
         print("\n========== Final Result (JSON) ==========")
         print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 1 if result.get("label") == "unavailable" else 0
 
 
 def _normalize_legacy_args(argv: list[str]) -> list[str]:
@@ -250,13 +251,13 @@ def main(argv: list[str] | None = None) -> int:
     _load_env_file(args.env_file)
 
     try:
-        args.func(args)
+        result = args.func(args)
     except Exception:
         if args.debug:
             raise
         logging.exception("Command failed")
         return 1
-    return 0
+    return result if isinstance(result, int) else 0
 
 
 if __name__ == "__main__":

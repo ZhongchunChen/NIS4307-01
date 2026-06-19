@@ -143,7 +143,18 @@ def convert_shared_task(input_path: Path, output_path: Path) -> tuple[pd.DataFra
                 }
             )
 
-    converted = pd.DataFrame(rows)
+    converted = pd.DataFrame(
+        rows,
+        columns=[
+            "id",
+            "text",
+            "label",
+            "source",
+            "subset",
+            "original_label",
+            "verifiable",
+        ],
+    )
     cleaned, report = clean_binary_dataframe(converted)
     report["skipped_labels"] = skipped_labels
     output_path.parent.mkdir(parents=True, exist_ok=True)

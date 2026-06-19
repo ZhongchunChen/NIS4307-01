@@ -6,12 +6,16 @@
 
 ```text
 输入：英文短文本 text
-输出：label 0 或 1
+输出：label 0（非谣言）或 1（谣言）
 ```
 
 模型只使用数据中的 `text` 列，不使用 `id`、`event` 等字段。数据主要来自社交媒体短文本、事实核查声明和新闻文本，目标是判断文本更接近真实信息还是虚假或谣言信息。
 
-具体标签含义由数据集映射决定。例如：
+主数据集采用 PHEME 风格的谣言检测标签，描述一条信息在发布时是否未经证实，而不是最终真假：
+
+- 主数据集：`0 -> 非谣言`、`1 -> 谣言`
+
+额外数据集映射到同一分类方向：
 
 - GossipCop：`R -> 0`、`F -> 1`
 - FEVER/shared task：`SUPPORTS -> 0`、`REFUTES -> 1`
@@ -204,8 +208,7 @@ classification head parameters: updated
 ├── datasets/
 │   ├── train.csv              # 训练集
 │   ├── val.csv                # 验证集
-│   ├── gossipcop_extra.csv    # 可选 GossipCop 扩展数据
-│   └── shared_task_extra.csv  # 可选 shared-task 扩展数据
+│   └── all_extra.parquet      # 合并后的可选扩展数据
 ├── checkpoints/
 │   ├── base/                  # 缓存的 BERTweet 预训练权重
 │   └── bertweet/              # 微调后的模型权重
