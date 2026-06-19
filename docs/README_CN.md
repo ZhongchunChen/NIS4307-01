@@ -48,19 +48,21 @@ python -m pip install -e .
 
 ## 准备模型
 
-真实推理与评估需要以下路径存在微调后的检查点：
+真实推理与评估优先使用以下路径中本地训练得到的检查点：
 
 ```text
 checkpoints/bertweet/best_model/
 ```
 
-如果已经获得检查点，可以跳过训练。否则，请在 `datasets/` 下放置 `train.csv` 和 `val.csv`。两个文件至少包含 `text` 和 `label` 两列，其中 `0` 表示非谣言，`1` 表示谣言。
+如果该目录不存在，项目会下载 `model.huggingface_checkpoint` 配置的微调检查点。本地训练成功后生成的检查点会自动优先使用。训练数据至少需要包含 `text` 和 `label` 两列，其中 `0` 表示非谣言，`1` 表示谣言。
 
 ```csv
 text,label
 "This claim is confirmed by an official source.",0
 "A celebrity secretly died yesterday.",1
 ```
+
+数据路径采用本地优先策略。如果配置的文件不存在，项目会根据 `configs/bertweet.yaml` 中的 `data.huggingface` 映射，从指定数据集仓库下载对应的 Parquet 文件，并复用 Hugging Face 缓存。
 
 使用 `configs/bertweet.yaml` 中的默认配置训练：
 
@@ -120,7 +122,7 @@ python main.py serve
 python main.py serve --no-llm --no-rag
 ```
 
-> **检查点提醒**：如果 `checkpoints/bertweet/best_model/` 不存在，Web 界面会使用 mock 分类器测试 UI。mock 预测不能用于模型评估或课程评分。
+> **检查点规则**：系统优先使用本地训练的 `checkpoints/bertweet/best_model/`。如果该目录不存在，则下载并缓存配置的 Hugging Face 检查点。只有本地和远程检查点都无法解析时，Web 界面才会使用 mock 分类器。
 
 ## 使用自定义测试集评估
 
@@ -141,6 +143,8 @@ CSV 可以包含额外列。缺少文本、缺少标签或标签不属于 `0`、
 ```bash
 python main.py evaluate --test datasets/my_test.csv
 ```
+
+如果本地路径不存在，`--test` 也会使用配置的 Hugging Face 映射。例如，`--test datasets/val.csv` 会获取远程 validation Parquet 文件；已存在的本地文件始终优先。若需使用其他远程测试文件，请先在 `data.huggingface.files` 中添加映射。
 
 也可以指定检查点和输出文件：
 

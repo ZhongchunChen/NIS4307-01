@@ -193,3 +193,138 @@ model:
     root = config_module.PROJECT_ROOT
     assert loaded["data"]["train_path"] == str(root / "datasets/train.csv")
     assert loaded["training"]["output_dir"] == str(root / "outputs/model")
+
+
+def test_missing_data_path_is_downloaded_from_huggingface(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_module = importlib.import_module("src.config")
+    download = Mock(return_value="/cache/not-present.csv")
+    hub_module = ModuleType("huggingface_hub")
+    hub_module.hf_hub_download = download  # type: ignore[attr-defined]
+    errors_module = ModuleType("huggingface_hub.errors")
+    errors_module.LocalEntryNotFoundError = RuntimeError  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "huggingface_hub", hub_module)
+    monkeypatch.setitem(sys.modules, "huggingface_hub.errors", errors_module)
+
+    resolved = config_module.resolve_data_path(
+        "datasets/not-present.csv",
+        {
+            "repo_id": "owner/dataset",
+            "revision": "v1",
+            "local_dir": "datasets",
+        },
+    )
+
+    assert resolved == "/cache/not-present.csv"
+    download.assert_called_once_with(
+        repo_id="owner/dataset",
+        filename="not-present.csv",
+        repo_type="dataset",
+        revision="v1",
+        local_files_only=True,
+    )
+
+
+def test_huggingface_file_map_uses_remote_parquet_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_module = importlib.import_module("src.config")
+    download = Mock(return_value="/cache/train.parquet")
+    hub_module = ModuleType("huggingface_hub")
+    hub_module.hf_hub_download = download  # type: ignore[attr-defined]
+    errors_module = ModuleType("huggingface_hub.errors")
+    errors_module.LocalEntryNotFoundError = RuntimeError  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "huggingface_hub", hub_module)
+    monkeypatch.setitem(sys.modules, "huggingface_hub.errors", errors_module)
+
+    resolved = config_module.resolve_data_path(
+        "datasets/not-present.csv",
+        {
+            "repo_id": "owner/dataset",
+            "local_dir": "datasets",
+            "files": {
+                "datasets/not-present.csv": "data/train-00000-of-00001.parquet"
+            },
+        },
+    )
+
+    assert resolved == "/cache/train.parquet"
+    assert download.call_args.kwargs["filename"] == "data/train-00000-of-00001.parquet"
+
+
+def test_existing_local_data_path_takes_precedence(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    config_module = importlib.import_module("src.config")
+    local_file = tmp_path / "test.csv"
+    local_file.write_text("text,label\nclaim,0\n", encoding="utf-8")
+    hub_module = ModuleType("huggingface_hub")
+    hub_module.hf_hub_download = Mock()  # type: ignore[attr-defined]
+    errors_module = ModuleType("huggingface_hub.errors")
+    errors_module.LocalEntryNotFoundError = RuntimeError  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "huggingface_hub", hub_module)
+    monkeypatch.setitem(sys.modules, "huggingface_hub.errors", errors_module)
+
+    resolved = config_module.resolve_data_path(
+        local_file,
+        {"repo_id": "owner/dataset"},
+    )
+
+    assert resolved == str(local_file)
+    hub_module.hf_hub_download.assert_not_called()  # type: ignore[attr-defined]
+
+
+def test_local_trained_checkpoint_takes_precedence(tmp_path: Path) -> None:
+    from src.config import resolve_checkpoint_path
+
+    checkpoint_dir = tmp_path / "checkpoints"
+    best_model = checkpoint_dir / "best_model"
+    best_model.mkdir(parents=True)
+    for filename in ("config.json", "tokenizer_config.json", "model.safetensors"):
+        (best_model / filename).touch()
+    config = {
+        "training": {"checkpoint_dir": str(checkpoint_dir)},
+        "model": {
+            "huggingface_checkpoint": {"repo_id": "owner/remote-checkpoint"}
+        },
+    }
+
+    assert resolve_checkpoint_path(config) == str(best_model)
+
+
+def test_missing_local_checkpoint_uses_huggingface_snapshot(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from src.config import resolve_checkpoint_path
+
+    cached_model = tmp_path / "cached-model"
+    cached_model.mkdir()
+    for filename in ("config.json", "tokenizer_config.json", "model.safetensors"):
+        (cached_model / filename).touch()
+    snapshot_download = Mock(return_value=str(cached_model))
+    hub_module = ModuleType("huggingface_hub")
+    hub_module.snapshot_download = snapshot_download  # type: ignore[attr-defined]
+    errors_module = ModuleType("huggingface_hub.errors")
+    errors_module.LocalEntryNotFoundError = RuntimeError  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "huggingface_hub", hub_module)
+    monkeypatch.setitem(sys.modules, "huggingface_hub.errors", errors_module)
+    config = {
+        "training": {"checkpoint_dir": str(tmp_path / "missing")},
+        "model": {
+            "huggingface_checkpoint": {
+                "repo_id": "owner/remote-checkpoint",
+                "revision": "v1",
+            }
+        },
+    }
+
+    assert resolve_checkpoint_path(config) == str(cached_model)
+    snapshot_download.assert_called_once_with(
+        repo_id="owner/remote-checkpoint",
+        repo_type="model",
+        revision="v1",
+        local_files_only=True,
+    )

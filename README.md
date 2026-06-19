@@ -56,19 +56,21 @@ On Windows PowerShell, activate it with `\.venv\Scripts\Activate.ps1`.
 
 ## Prepare the Model
 
-Real inference and evaluation require a fine-tuned checkpoint at:
+Real inference and evaluation prefer a locally trained checkpoint at:
 
 ```text
 checkpoints/bertweet/best_model/
 ```
 
-If a checkpoint has already been provided, no training is required. Otherwise, place `train.csv` and `val.csv` under `datasets/`. Both files must contain `text` and `label` columns, where `0` means not rumor and `1` means rumor.
+If that directory is absent, the project downloads the fine-tuned checkpoint configured under `model.huggingface_checkpoint`. A successful local training run takes precedence automatically. To train, the datasets must contain `text` and `label` columns, where `0` means not rumor and `1` means rumor.
 
 ```csv
 text,label
 "This claim is confirmed by an official source.",0
 "A celebrity secretly died yesterday.",1
 ```
+
+Dataset paths are local-first. If a configured file is absent, the project downloads its mapped Parquet file from the Hugging Face dataset repository configured under `data.huggingface` in `configs/bertweet.yaml` and reuses the Hugging Face cache.
 
 Train with the defaults in `configs/bertweet.yaml`:
 
@@ -128,7 +130,7 @@ Run the BERTweet-only display without LLM or RAG configuration:
 python main.py serve --no-llm --no-rag
 ```
 
-> **Checkpoint warning:** If `checkpoints/bertweet/best_model/` is missing, the web interface uses a mock classifier for UI testing. Mock predictions must not be used for model evaluation or grading.
+> **Checkpoint behavior:** The locally trained `checkpoints/bertweet/best_model/` is preferred. If it is missing, the configured Hugging Face checkpoint is downloaded and cached. The web interface uses its mock classifier only when neither checkpoint can be resolved.
 
 ## Evaluate a Custom Test Dataset
 
@@ -149,6 +151,8 @@ Evaluate the configured best checkpoint:
 ```bash
 python main.py evaluate --test datasets/my_test.csv
 ```
+
+If the local path does not exist, `--test` also uses the configured Hugging Face mapping. For example, `--test datasets/val.csv` retrieves the remote validation Parquet file; an existing local file always takes precedence. Add custom remote test files to `data.huggingface.files` before referencing them with `--test`.
 
 Or specify a checkpoint and output file:
 

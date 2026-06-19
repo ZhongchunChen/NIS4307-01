@@ -54,6 +54,14 @@ def normalize_text(text: str) -> str:
     return " ".join(html.unescape(text).split())
 
 
+def read_dataframe(path: str | Path) -> pd.DataFrame:
+    """Read a supported local or Hugging Face-cached tabular dataset."""
+    resolved_path = Path(path)
+    if resolved_path.suffix.lower() == ".parquet":
+        return pd.read_parquet(resolved_path)
+    return pd.read_csv(resolved_path)
+
+
 def _clean_dataframe(
     dataframe: pd.DataFrame,
     source_rows: int,
@@ -103,7 +111,7 @@ def _clean_split(
     drop_duplicate_texts: bool,
     remove_conflicting_texts: bool,
 ) -> tuple[pd.DataFrame, CleaningReport]:
-    dataframe = pd.read_csv(path)
+    dataframe = read_dataframe(path)
     required_columns = {text_column, label_column}
     missing = required_columns - set(dataframe.columns)
     if missing:

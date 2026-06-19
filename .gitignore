@@ -556,6 +556,7 @@ TSWLatexianTemp*
 .env
 checkpoints/
 datasets/*
+dataset/*
 *.py[cod]
 
 ### PROJECT-SPECIFIC FILES

@@ -13,7 +13,7 @@ from pathlib import Path
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-from src.config import load_config
+from src.config import load_config, resolve_checkpoint_path
 from src.model.utils import get_device
 
 _logger = logging.getLogger(__name__)
@@ -58,22 +58,12 @@ def _ensure_model_loaded() -> None:
 
     config = load_config(_config_path)
     training = config["training"]
-    checkpoint = (
-        Path(_checkpoint_path)
-        if _checkpoint_path is not None
-        else Path(training["checkpoint_dir"]) / "best_model"
-    )
-
-    if not checkpoint.exists():
-        raise FileNotFoundError(
-            f"Model checkpoint not found at {checkpoint}. "
-            "Train the model first or provide the checkpoint directory."
-        )
+    checkpoint = resolve_checkpoint_path(config, _checkpoint_path)
 
     _device = get_device(_device_name or training.get("device", "auto"))
     _max_length = config["model"]["max_length"]
-    _tokenizer = AutoTokenizer.from_pretrained(str(checkpoint))
-    _model = AutoModelForSequenceClassification.from_pretrained(str(checkpoint)).to(_device)
+    _tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+    _model = AutoModelForSequenceClassification.from_pretrained(checkpoint).to(_device)
     _model.eval()
     _logger.info("Model loaded from %s on %s", checkpoint, _device)
 

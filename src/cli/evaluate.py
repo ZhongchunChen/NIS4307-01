@@ -14,7 +14,7 @@ def run(
     import pandas as pd
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-    from src.config import load_config
+    from src.config import load_config, resolve_checkpoint_path, resolve_data_path
     from src.model import (
         TweetDataset,
         build_loader,
@@ -22,23 +22,28 @@ def run(
         get_device,
         load_datasets,
         normalize_text,
+        read_dataframe,
         save_json,
     )
 
     config = load_config(config_path)
     training = config["training"]
-    checkpoint = Path(checkpoint_path or training["checkpoint_dir"]) / (
-        "" if checkpoint_path else "best_model"
-    )
+    checkpoint = resolve_checkpoint_path(config, checkpoint_path)
     device = get_device(device_name or training["device"])
 
     text_column = config["data"]["text_column"]
     label_column = config["data"]["label_column"]
     if test_path:
-        eval_df = pd.read_csv(test_path)
+        resolved_test_path = resolve_data_path(
+            test_path,
+            config["data"].get("huggingface"),
+        )
+        eval_df = read_dataframe(resolved_test_path)
         missing = {text_column, label_column} - set(eval_df.columns)
         if missing:
-            raise ValueError(f"{test_path} is missing required columns: {sorted(missing)}")
+            raise ValueError(
+                f"{resolved_test_path} is missing required columns: {sorted(missing)}"
+            )
         eval_df = eval_df.dropna(subset=[text_column, label_column]).copy()
         eval_df[text_column] = eval_df[text_column].astype(str).map(normalize_text)
         eval_df[label_column] = pd.to_numeric(eval_df[label_column], errors="coerce")

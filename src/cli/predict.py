@@ -13,19 +13,15 @@ def run(
 ) -> dict[str, Any]:
     import html
     import json
-    from pathlib import Path
-
     import torch
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-    from src.config import load_config
+    from src.config import load_config, resolve_checkpoint_path
     from src.model import get_device
 
     config = load_config(config_path)
     training = config["training"]
-    checkpoint = Path(checkpoint_path or training["checkpoint_dir"]) / (
-        "" if checkpoint_path else "best_model"
-    )
+    checkpoint = resolve_checkpoint_path(config, checkpoint_path)
     device = get_device(device_name or training["device"])
     tokenizer = AutoTokenizer.from_pretrained(checkpoint)
     model = AutoModelForSequenceClassification.from_pretrained(checkpoint).to(device)
