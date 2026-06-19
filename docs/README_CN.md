@@ -1,13 +1,5 @@
 # 谣言检测系统
 
-> **NIS4307：人工智能导论** — 上海交通大学第 4 小组课程项目。
-
-**作者**：
-* Zhongchun Chen @ZhongchunChen
-* Runze Shen @RanceChen06
-* Mingchen Dai @MingchenDai
-* Zihao Xie @Zihao-Xie090
-
 **文档**：[English README](../README.md)
 
 **最终报告**：$\LaTeX$ 源文件 `report.tex` 与编译后的 `report.pdf` 位于 `/report` 目录。请以 main 分支的最新提交为准。
@@ -194,10 +186,9 @@ python main.py --help
 python main.py COMMAND --help
 ```
 
-进一步技术文档：
+## 技术文档
 
-- `report/report.pdf`：模型设计、实验、结果与分析
-- `docs/model.md`：模型训练与评估细节
-- `docs/frontend.md`：Web 界面与 LLM 流程
-- `docs/Bertweet.md`：BERTweet 背景介绍
-- `README.md`：英文项目说明
+- [机器学习模型](model.md)：BERTweet 架构、数据准备、训练、评估、预测与输出文件
+- [前端](frontend.md)：FastAPI/Jinja 架构、分析流程、环境配置与 ML 接口约定
+- [技术报告](../report/)：详细的模型设计、实验、结果与分析
+- [英文 README](../README.md)：英文项目安装与使用说明

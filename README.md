@@ -3,27 +3,24 @@
 > **NIS4307: Introduction to Artificial Intelligence** — Course Project by Group 4, Shanghai Jiao Tong University.
 
 **Authors**:
-* Zhongchun Chen @ZhongchunChen
-* Runze Shen @RanceChen06
-* Mingchen Dai @MingchenDai
-* Zihao Xie @Zihao-Xie090
+* Zhongchun Chen [@ZhongchunChen](https://github.com/ZhongchunChen)
+* Runze Shen [@RanceChen06](https://github.com/RanceChen06)
+* Mingchen Dai [@MingchenDai](https://github.com/MingchenDai)
+* Zihao Xie [@Zihao-Xie090](https://github.com/Zihao-Xie090)
 
 **Docs**: For Chinese docs, go to [中文文档](docs/README_CN.md).
 
 **Final Report**: The $\LaTeX$ source code (`report.tex`) and the compiled document (`report.pdf`) are located in the `/report` directory. Please ensure you are referencing the **latest** commit on the main branch for the most up-to-date version.
 
 **Table of Contents**:
-- [Rumor Detection System](#rumor-detection-system)
-  - [Overview](#overview)
-  - [Setup](#setup)
-  - [Prepare the Model](#prepare-the-model)
-  - [Optional LLM and RAG Configuration](#optional-llm-and-rag-configuration)
-    - [Configure the LLM](#configure-the-llm)
-    - [Enable RAG](#enable-rag)
-  - [Run the Web Demo](#run-the-web-demo)
-  - [Evaluate a Custom Test Dataset](#evaluate-a-custom-test-dataset)
-  - [Project Structure](#project-structure)
-  - [Command Summary](#command-summary)
+1. [Overview](#overview)
+2. [Setup](#setup)
+3. [Prepare the Model](#prepare-the-model)
+4. [Optional LLM and RAG Configuration](#optional-llm-and-rag-configuration)
+5. [Run the Web Demo](#run-the-web-demo)
+6. [Evaluate a Custom Test Dataset](#evaluate-a-custom-test-dataset)
+7. [Project Structure](#project-structure)
+8. [Command Summary](#command-summary)
 
 ## Overview
 
@@ -197,10 +194,9 @@ python main.py --help
 python main.py COMMAND --help
 ```
 
-Further technical documentation:
+## Technical Documentation
 
-- `report/`: model design, experiments, results, and analysis
-- `docs/model.md`: model training and evaluation details
-- `docs/frontend.md`: web interface and LLM workflow
-- `docs/Bertweet.md`: BERTweet background
-- `docs/README_CN.md`: Chinese documentation
+- [Machine learning model](docs/model.md): BERTweet architecture, data preparation, training, evaluation, prediction, and generated artifacts
+- [Frontend](docs/frontend.md): FastAPI/Jinja architecture, analysis workflow, environment setup, and ML interface contract
+- [Technical report](report/): detailed model design, experiments, results, and analysis
+- [Chinese README](docs/README_CN.md): Chinese project setup and usage guide
