@@ -18,6 +18,14 @@ def _env_enabled(name: str, default: bool = True) -> bool:
     return value.lower() in {"1", "true", "yes", "on"}
 
 
+def _binary_verdict(value: object) -> int | None:
+    return value if type(value) is int and value in (0, 1) else None
+
+
+def _agreement(value: object) -> bool | None:
+    return value if type(value) is bool else None
+
+
 def create_runtime_app() -> FastAPI:
     """Build the app inside a Uvicorn reload worker."""
     from src.model import configure_inference
@@ -80,8 +88,8 @@ def create_app(enable_rag: bool = True, enable_llm: bool = True) -> FastAPI:
                 "ml_is_rumor": raw_result["is_rumor"],
                 "ml_confidence": raw_result["confidence"],
                 "llm_label": "DISABLED",
-                "llm_is_rumor": raw_result["is_rumor"],
-                "agreement": True,
+                "llm_is_rumor": None,
+                "agreement": None,
                 "llm_reasoning": f"LLM analysis is disabled. ML-only verdict: {label}.",
                 "supporting_indicators": [],
                 "comparison_summary": "LLM comparison is disabled.",
@@ -100,31 +108,52 @@ def create_app(enable_rag: bool = True, enable_llm: bool = True) -> FastAPI:
                 "error": f"LLM analysis failed: {exc}",
             })
 
-        # Step 3: Stage 2 — LLM compares its verdict with ML result
-        try:
-            comparison = compare_results(statement, raw_result, llm_result)
-        except Exception:
-            comparison = {}
+        llm_is_rumor = _binary_verdict(llm_result.get("is_rumor"))
+        raw_llm_label = llm_result.get("label")
+        if llm_is_rumor is None:
+            llm_label = "UNAVAILABLE"
+        elif isinstance(raw_llm_label, str) and raw_llm_label.strip():
+            llm_label = raw_llm_label.strip()
+        else:
+            llm_label = "RUMOR" if llm_is_rumor else "NOT RUMOR"
 
-        agreement = comparison.get("agreement", True)
+        # Step 3: Stage 2 — LLM compares its verdict with ML result
+        comparison = {}
+        if llm_is_rumor is not None:
+            try:
+                comparison = compare_results(statement, raw_result, llm_result)
+            except Exception:
+                pass
+
+        agreement = _agreement(comparison.get("agreement"))
 
         # Step 4: Stage 3 — Root cause analysis
-        try:
-            analysis = analyze_root_cause(statement, raw_result, llm_result, bool(agreement))
-        except Exception:
-            analysis = {}
+        analysis = {}
+        if agreement is not None:
+            try:
+                analysis = analyze_root_cause(
+                    statement,
+                    raw_result,
+                    llm_result,
+                    agreement,
+                )
+            except Exception:
+                pass
 
         return templates.TemplateResponse(request, "index.html", {
             "model_name": API_MODEL,
             "statement": statement,
             "ml_is_rumor": raw_result["is_rumor"],
             "ml_confidence": raw_result["confidence"],
-            "llm_label": llm_result.get("label", "Unknown"),
-            "llm_is_rumor": llm_result.get("is_rumor", -1),
+            "llm_label": llm_label,
+            "llm_is_rumor": llm_is_rumor,
             "agreement": agreement,
             "llm_reasoning": llm_result.get("reasoning", ""),
             "supporting_indicators": llm_result.get("supporting_indicators", []),
-            "comparison_summary": comparison.get("comparison_summary", ""),
+            "comparison_summary": comparison.get(
+                "comparison_summary",
+                "LLM comparison is unavailable." if agreement is None else "",
+            ),
             "root_cause_analysis": analysis.get("root_cause_analysis", ""),
             "key_indicators": analysis.get("key_indicators", []),
             "rag_evidence": rag_evidence,
