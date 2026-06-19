@@ -11,6 +11,11 @@ load_dotenv()
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
+def _project_path(value: str | Path) -> Path:
+    path = Path(value).expanduser()
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
 def _is_complete_checkpoint(path: str | Path) -> bool:
     checkpoint = Path(path)
     model_exists = any(
@@ -90,12 +95,21 @@ def resolve_data_path(
     if not repo_id:
         return str(local_path)
 
-    local_dir = Path(huggingface_config.get("local_dir", "datasets"))
+    local_dir = _project_path(huggingface_config.get("local_dir", "datasets"))
     try:
-        filename = path.relative_to(local_dir).as_posix()
+        filename = local_path.relative_to(local_dir).as_posix()
     except ValueError:
-        filename = path.as_posix()
-    filename = huggingface_config.get("files", {}).get(path.as_posix(), filename)
+        try:
+            filename = local_path.relative_to(PROJECT_ROOT).as_posix()
+        except ValueError:
+            filename = path.as_posix()
+
+    try:
+        project_path = local_path.relative_to(PROJECT_ROOT).as_posix()
+    except ValueError:
+        project_path = path.as_posix()
+    file_map = huggingface_config.get("files", {})
+    filename = file_map.get(project_path, file_map.get(path.as_posix(), filename))
 
     from huggingface_hub import hf_hub_download
     from huggingface_hub.errors import LocalEntryNotFoundError
@@ -124,18 +138,22 @@ def load_config(config_path: str | Path) -> dict[str, Any]:
     config["_config_path"] = str(path)
     config["_project_root"] = str(project_root)
 
-    huggingface_config = config["data"].get("huggingface")
     for key in ("train_path", "val_path"):
-        config["data"][key] = resolve_data_path(
-            config["data"][key],
-            huggingface_config,
+        value = Path(config["data"][key]).expanduser()
+        config["data"][key] = str(
+            value if value.is_absolute() else project_root / value
         )
 
     extra_datasets = config["data"].get("extra_datasets", {})
     extra_paths = extra_datasets.get("paths", [])
     config["data"].setdefault("extra_datasets", {})
     config["data"]["extra_datasets"]["paths"] = [
-        resolve_data_path(extra_path, huggingface_config) for extra_path in extra_paths
+        str(
+            path
+            if (path := Path(extra_path).expanduser()).is_absolute()
+            else project_root / path
+        )
+        for extra_path in extra_paths
     ]
 
     output_dir = Path(config["training"]["output_dir"])

@@ -195,6 +195,41 @@ model:
     assert loaded["training"]["output_dir"] == str(root / "outputs/model")
 
 
+def test_loading_config_does_not_download_datasets(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from src import config as config_module
+
+    resolve_data_path = Mock()
+    monkeypatch.setattr(config_module, "resolve_data_path", resolve_data_path)
+    config_path = tmp_path / "model.yaml"
+    config_path.write_text(
+        """
+data:
+  huggingface:
+    repo_id: owner/dataset
+  train_path: datasets/missing-train.csv
+  val_path: datasets/missing-val.csv
+  extra_datasets:
+    paths:
+      - datasets/missing-extra.csv
+training:
+  output_dir: outputs/model
+  checkpoint_dir: checkpoints/model
+model: {}
+""".strip(),
+        encoding="utf-8",
+    )
+
+    loaded = config_module.load_config(config_path)
+
+    resolve_data_path.assert_not_called()
+    assert loaded["data"]["train_path"] == str(
+        config_module.PROJECT_ROOT / "datasets/missing-train.csv"
+    )
+
+
 def test_missing_data_path_is_downloaded_from_huggingface(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -250,6 +285,32 @@ def test_huggingface_file_map_uses_remote_parquet_path(
     )
 
     assert resolved == "/cache/train.parquet"
+    assert download.call_args.kwargs["filename"] == "data/train-00000-of-00001.parquet"
+
+
+def test_huggingface_file_map_accepts_normalized_absolute_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_module = importlib.import_module("src.config")
+    download = Mock(return_value="/cache/train.parquet")
+    hub_module = ModuleType("huggingface_hub")
+    hub_module.hf_hub_download = download  # type: ignore[attr-defined]
+    errors_module = ModuleType("huggingface_hub.errors")
+    errors_module.LocalEntryNotFoundError = RuntimeError  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "huggingface_hub", hub_module)
+    monkeypatch.setitem(sys.modules, "huggingface_hub.errors", errors_module)
+
+    config_module.resolve_data_path(
+        config_module.PROJECT_ROOT / "datasets/not-present.csv",
+        {
+            "repo_id": "owner/dataset",
+            "local_dir": "datasets",
+            "files": {
+                "datasets/not-present.csv": "data/train-00000-of-00001.parquet"
+            },
+        },
+    )
+
     assert download.call_args.kwargs["filename"] == "data/train-00000-of-00001.parquet"
 
 

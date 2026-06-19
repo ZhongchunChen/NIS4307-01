@@ -9,6 +9,8 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
+from src.config import resolve_data_path
+
 
 @dataclass
 class CleaningReport:
@@ -140,7 +142,7 @@ def _load_extra_datasets(
     frames = []
     reports = {"enabled": True, "datasets": {}}
     for path in extra_config.get("paths", []):
-        extra_path = Path(path)
+        extra_path = Path(resolve_data_path(path, data_config.get("huggingface")))
         if not extra_path.exists():
             raise FileNotFoundError(f"Extra dataset does not exist: {extra_path}")
         dataframe, report = _clean_split(
@@ -162,16 +164,17 @@ def load_datasets(config: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, d
     text_column = data_config["text_column"]
     label_column = data_config["label_column"]
     cleaning = data_config["cleaning"]
+    huggingface_config = data_config.get("huggingface")
 
     train_df, train_report = _clean_split(
-        data_config["train_path"],
+        resolve_data_path(data_config["train_path"], huggingface_config),
         text_column,
         label_column,
         cleaning["drop_duplicate_texts"],
         cleaning["remove_conflicting_texts"],
     )
     val_df, val_report = _clean_split(
-        data_config["val_path"],
+        resolve_data_path(data_config["val_path"], huggingface_config),
         text_column,
         label_column,
         cleaning["drop_duplicate_texts"],
