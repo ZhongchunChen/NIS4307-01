@@ -47,7 +47,7 @@ prepare-extra-datasets = "src.cli.prepare_extra_datasets:main"
 rag-demo = "src.rag.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["src*"]
+include = ["src*", "scripts*"]
 
 [tool.setuptools.package-data]
 "src.web" = ["templates/*.html"]

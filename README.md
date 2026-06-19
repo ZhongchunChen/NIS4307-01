@@ -182,6 +182,21 @@ tests/          CLI and configuration regression tests
 main.py         Unified command-line entry point
 ```
 
+### Legacy Import Compatibility
+
+Temporary forwarding modules keep collaborator branches using the previous layout working. They emit `DeprecationWarning`; new code should use the canonical paths below.
+
+| Previous path | Canonical path |
+| --- | --- |
+| `src.app` | `src.web.app` |
+| `src.api_service` | `src.web.llm_service` |
+| `src.rag_service` | `src.rag.service` |
+| `src.training` | `src.model.pipeline` |
+| `src.data`, `src.metrics`, `src.utils` | Corresponding modules under `src.model` |
+| `scripts.*` | Corresponding modules under `src.cli` |
+
+The wrappers contain no implementation logic and can be removed after active collaborator branches migrate to the canonical imports.
+
 ## Command Summary
 
 | Command | Purpose |

@@ -174,6 +174,21 @@ tests/          CLI 与配置回归测试
 main.py         统一命令行入口
 ```
 
+### 旧导入路径兼容
+
+为便于协作者平滑合并，旧目录结构保留了临时转发模块。旧路径仍可使用，但会产生 `DeprecationWarning`；新代码应使用下列规范路径。
+
+| 旧路径 | 规范路径 |
+| --- | --- |
+| `src.app` | `src.web.app` |
+| `src.api_service` | `src.web.llm_service` |
+| `src.rag_service` | `src.rag.service` |
+| `src.training` | `src.model.pipeline` |
+| `src.data`、`src.metrics`、`src.utils` | `src.model` 下的同名模块 |
+| `scripts.*` | `src.cli` 下的同名模块 |
+
+这些兼容模块不包含独立实现；待现有协作分支完成迁移后即可单独删除。
+
 ## 命令概览
 
 | 命令 | 用途 |
