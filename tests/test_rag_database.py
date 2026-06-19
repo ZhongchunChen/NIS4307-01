@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import sys
 import zipfile
 from pathlib import Path
@@ -11,6 +12,33 @@ from unittest.mock import Mock
 import pytest
 
 from src.rag import config
+
+
+def test_importing_retriever_does_not_resolve_database(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ensure_database = Mock()
+    monkeypatch.setattr(config, "ensure_chroma_database", ensure_database)
+    monkeypatch.delitem(sys.modules, "src.rag.retriever", raising=False)
+
+    importlib.import_module("src.rag.retriever")
+
+    ensure_database.assert_not_called()
+
+
+def test_rag_cli_help_does_not_resolve_database(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.rag import cli
+
+    run_once = Mock()
+    monkeypatch.setattr(cli, "run_once", run_once)
+
+    with pytest.raises(SystemExit) as error:
+        cli.main(["rag-demo", "--help"])
+
+    assert error.value.code == 0
+    run_once.assert_not_called()
 
 
 def test_existing_chroma_database_takes_precedence(tmp_path: Path) -> None:

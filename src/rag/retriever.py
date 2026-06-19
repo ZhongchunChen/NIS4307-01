@@ -18,9 +18,6 @@ from typing import List, Dict, Any, Optional
 
 from src.rag import config
 
-if not config.is_chroma_database(config.CHROMA_DB_PATH):
-    config.ensure_chroma_database()
-
 # ----------------------------------------------------------------------
 # 设置离线模式，避免连接 huggingface.co 下载模型
 # 模型应已缓存在本地：~/.cache/huggingface/ 或 ~/.cache/torch/

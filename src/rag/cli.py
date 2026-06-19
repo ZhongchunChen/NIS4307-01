@@ -17,6 +17,7 @@ main.py
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 import traceback
@@ -107,9 +108,15 @@ def run_once(query: str) -> Dict[str, Any]:
 
 def main(argv: List[str] | None = None) -> int:
     argv = sys.argv if argv is None else argv
-    if len(argv) >= 2:
+    parser = argparse.ArgumentParser(
+        description="Classify a statement using ChromaDB evidence and an LLM.",
+    )
+    parser.add_argument("query", nargs="*", help="Statement to classify.")
+    args = parser.parse_args(argv[1:])
+
+    if args.query:
         # 命令行参数优先
-        query = " ".join(argv[1:]).strip()
+        query = " ".join(args.query).strip()
     else:
         try:
             query = input("请输入待鉴别的新闻 / 声明文本（输入 q 退出）：\n> ").strip()
