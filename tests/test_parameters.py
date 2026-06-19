@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 import sys
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
+from types import ModuleType
 from unittest.mock import Mock
 
 import pytest
@@ -13,6 +13,7 @@ import pytest
 import main
 from src.cli import plot_history as plot_history_cli
 from src.cli import train as train_cli
+from src.rag import config as rag_config
 from src.rag import service as rag_service
 
 
@@ -156,9 +157,8 @@ def test_frontend_rag_uses_shared_top_k(monkeypatch: pytest.MonkeyPatch) -> None
     retriever.retrieve.return_value = []
     retriever_module = ModuleType("src.rag.retriever")
     retriever_module.ChromaRetriever = Mock(return_value=retriever)  # type: ignore[attr-defined]
-    config_module = SimpleNamespace(TOP_K=9)
     monkeypatch.setitem(sys.modules, "src.rag.retriever", retriever_module)
-    monkeypatch.setitem(sys.modules, "src.rag.config", config_module)
+    monkeypatch.setattr(rag_config, "TOP_K", 9)
 
     assert rag_service.retrieve_rag_evidence("statement") == []
     retriever.retrieve.assert_called_once_with("statement", top_k=9)
