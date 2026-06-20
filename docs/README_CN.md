@@ -1,259 +1,215 @@
 # 谣言检测系统
 
-上海交通大学 NIS4307 *人工智能导论* 课程项目。
+**文档**：[English README](../README.md)
 
-[English](https://github.com/ZhongchunChen/NIS4307-01/blob/main/README.md)
+**最终报告**：$\LaTeX$ 源文件 `report.tex` 与编译后的 `report.pdf` 位于 `/report` 目录。请以 main 分支的最新提交为准。
+
+**目录**：
+1. [项目简介](#项目简介)
+2. [环境安装](#环境安装)
+3. [准备模型](#准备模型)
+4. [可选的 LLM 与 RAG 配置](#可选的-llm-与-rag-配置)
+5. [运行 Web 演示](#运行-web-演示)
+6. [使用自定义测试集评估](#使用自定义测试集评估)
+7. [项目结构](#项目结构)
+8. [命令概览](#命令概览)
 
 ## 项目简介
 
-本项目结合 **BERTweet 微调模型**、**RAG 检索增强模块**与 **LLM 多阶段分析**，构建一个可解释的谣言检测系统。用户输入一段英文文本后，系统首先调用机器学习模型给出 0/1 二分类结果和置信度，同时调用 RAG 模块从 ChromaDB 知识库中检索相关证据，再由 LLM 进行独立判断、比较 ML 与 LLM 的结果，并分析两者一致或分歧的原因。最终系统通过可视化界面展示 ML 判语、LLM 判语、置信度、判断依据、比较分析以及 RAG 检索证据。
+本项目使用微调后的 BERTweet 模型对英文语句进行谣言二分类。Web 界面还可以选择从 ChromaDB 检索相关证据，并调用兼容 OpenAI API 的大语言模型解释预测结果、比较 ML 与 LLM 的判断，以及分析两者一致或分歧的原因。
 
-## 项目结构
+各组件在可行范围内保持独立：模型训练与评估只依赖 ML 模型；LLM 与 RAG 可用于完整的可解释演示。模型设计、实验结果和技术分析请参阅[最终报告](../report/report.pdf)及 `docs/` 下的模块文档。
 
-```
-NIS4307-01/
-├── RAG/                         # RAG 模块与 ChromaDB 检索代码
-│   ├── chroma_retriever.py       # ChromaDB 检索器
-│   ├── config.py                 # RAG 配置
-│   ├── em.py                     # 向量化 / embedding 相关代码
-│   ├── llm_judge.py              # RAG 独立 LLM 判断入口
-│   ├── main.py                   # RAG 独立运行入口
-│   ├── requirements.txt          # RAG 模块依赖
-│   └── train.csv                 # RAG 示例 / 辅助数据
-├── configs/
-│   └── bertweet.yaml             # 模型与训练配置
-├── docs/
-│   ├── frontend.md               # 前端架构说明
-│   ├── model.md                  # 模型训练文档
-│   └── README_CN.md              # 中文 README
-├── outputs/bertweet/             # 训练指标、曲线和评估结果
-├── src/
-│   ├── app.py                    # FastAPI 应用工厂
-│   ├── config.py                 # 配置加载（.env + YAML）
-│   ├── model.py                  # BERTweet 模型封装
-│   ├── api_service.py            # LLM 多阶段分析服务
-│   ├── rag_service.py            # 主系统调用 RAG 检索证据
-│   ├── data.py                   # 数据加载与清洗
-│   ├── train.py                  # 训练脚本
-│   ├── evaluate.py               # 评估脚本
-│   ├── predict.py                # 单文本预测 CLI
-│   ├── metrics.py                # 分类指标
-│   ├── plot_history.py           # 训练曲线绘制
-│   ├── utils.py                  # 通用工具
-│   └── templates/
-│       └── index.html            # Jinja2 前端页面
-├── .example.env                  # 环境变量模板
-├── .gitignore                    # Git 忽略规则
-├── README.md                     # 项目说明
-├── environment.yml               # Conda 环境配置
-├── main.py                       # 统一入口
-├── pyproject.toml                # 项目配置
-├── requirements.txt              # Python 依赖
-└── report.pdf                    # 课程报告
-```
+## 环境安装
 
-## 架构概览
-
-### 整体流程
-
-```
-用户输入语句
-    │
-    ▼
-┌──────────────────────────────────────────────────────┐
-│  Step 1   classify_statement()     ← BERTweet 模型   │
-│           返回 {is_rumor, confidence}                │
-├──────────────────────────────────────────────────────┤
-│  Step 2   retrieve_rag_evidence()  ← RAG / ChromaDB  │
-│           检索相关证据 evidence                      │
-├──────────────────────────────────────────────────────┤
-│  Step 3   judge_statement()        ← LLM Stage 1     │
-│           LLM 结合文本和 RAG 证据进行独立判断         │
-│           返回 {is_rumor, label, reasoning,          │
-│                 supporting_indicators}               │
-├──────────────────────────────────────────────────────┤
-│  Step 4   compare_results()        ← LLM Stage 2     │
-│           LLM 比较 ML 与自身结果                     │
-│           返回 {agreement, comparison_summary}       │
-├──────────────────────────────────────────────────────┤
-│  Step 5   analyze_root_cause()     ← LLM Stage 3     │
-│           一致 → 综合解释                             │
-│           分歧 → 分析原因                             │
-│           返回 {root_cause_analysis,                  │
-│                 key_indicators}                       │
-└──────────────────────────────────────────────────────┘
-    │
-    ▼
-渲染 HTML → 返回用户
-```
-
-### ML 模型
-
-基于 `vinai/bertweet-base` 微调的二分类器，架构如下：
-
-```
-原始文本 → BERTweet tokenizer → BERTweet encoder → dropout → 线性分类头 → [rumor / not rumor]
-```
-
-模型输出两个类别的 softmax 概率，预测标签为 `0`（非谣言）或 `1`（谣言），置信度取预测类别的概率值。
-
-### RAG 检索增强模块
-
-RAG 模块使用 ChromaDB 向量数据库进行相似证据检索。用户输入文本后，系统会调用 `src/rag_service.py`，从 `RAG/` 目录下的 ChromaDB 数据库中检索若干条相关证据。检索结果会被传入 LLM prompt，作为生成判断依据和分歧分析时的参考信息。
-
-RAG 模块不直接改变 BERTweet 模型输出的 0/1 分类结果，而是作为解释增强模块，为 LLM 提供外部证据或相似样本。若 RAG 数据库、依赖或本地路径不可用，系统会自动返回空 evidence，主流程仍可退化为原有的 BERTweet + LLM 分析流程。
-
-### LLM 分析（三阶段）
-
-| 阶段 | 函数 | 作用 |
-|------|------|------|
-| Stage 1 | `judge_statement()` | LLM 结合输入文本与 RAG 检索证据，从可验证性、信源可信度、逻辑连贯性、情绪化语言、具体性等维度分析 |
-| Stage 2 | `compare_results()` | 将 ML 结果与 LLM 独立判断提交给 LLM 比较，判定一致或分歧 |
-| Stage 3 | `analyze_root_cause()` | 一致时综合解释，分歧时分析误导原因 |
-
-### 前端展示
-
-- 三列判语栏：ML Verdict | LLM Verdict（分歧时显示黄色 ⚠） | Confidence
-- 双列详情：LLM Analysis（判据 + 支撑线索）| Comparison（比较摘要 + 根因分析 + 关键指标）
-- RAG Retrieved Evidence：展示 RAG 检索到的证据来源、标签、距离和文本内容
-
-## 训练
-
-### 数据准备
-
-在 `datasets/` 下放置 `train.csv` 和 `val.csv`，需包含 `text` 和 `label` 两列：
-
-```csv
-text,label
-"This appears to be a rumor",1
-"This is verified news",0
-```
-
-### 配置文件
-
-编辑 `configs/bertweet.yaml`，可调整超参数、路径等。关键配置项：
-
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `data.train_path` | `datasets/train.csv` | 训练集路径 |
-| `data.val_path` | `datasets/val.csv` | 验证集路径 |
-| `training.epochs` | 16 | 训练轮数 |
-| `training.learning_rate` | 1e-5 | 学习率 |
-| `training.early_stopping_metric` | `macro_f1` | 早停监控指标 |
-| `training.early_stopping_patience` | 2 | 早停 patience |
-
-### 开始训练
-
-```bash
-python main.py --train
-```
-
-首次运行会自动从 Hugging Face 下载 `vinai/bertweet-base` 并缓存到 `checkpoints/base/`。训练完成后，最佳模型保存在 `checkpoints/bertweet/best_model/`，训练曲线和指标保存在 `outputs/bertweet/`。
-
-### 评估模型
-
-```bash
-python -m src.evaluate --config configs/bertweet.yaml
-```
-
-### CLI 预测
-
-```bash
-python -m src.predict --config configs/bertweet.yaml --text "示例文本"
-```
-
-## RAG 模块运行说明
-
-RAG 代码位于 `RAG/` 目录下，主系统已经通过 `src/rag_service.py` 将其作为可选辅助模块接入 LLM 分析流程。
-
-由于 ChromaDB 向量数据库文件较大，未直接提交到仓库中，而是通过 GitHub Release 提供。运行 RAG 功能前，需要在 Releases 页面下载：
-
-```
-ChromaDB_data_populate.zip
-```
-
-下载后将其解压到 `RAG/` 目录下。解压后的目录结构应类似：
-
-```
-RAG/
-├── chroma_retriever.py
-├── config.py
-├── main.py
-├── requirements.txt
-├── ...
-└── ChromaDB_data_populate/
-    └── DataBase/
-        └── data/
-```
-
-安装 RAG 依赖：
-
-```bash
-cd RAG
-pip install -r requirements.txt
-```
-
-独立运行 RAG 模块：
-
-```bash
-python main.py
-```
-
-在主系统中启用 RAG 时，只需确保 `RAG/ChromaDB_data_populate/DataBase/data` 路径存在。若该数据库不存在，主系统不会崩溃，但页面中不会展示 RAG 检索证据。
-
-## 环境配置
-
-### 安装依赖
-
-Conda（推荐）：
+推荐使用 Conda 创建 Python 3.10 环境：
 
 ```bash
 conda env create -f environment.yml
 conda activate intro2ai
 ```
 
-或 pip：
+依赖发生变化后，可更新已有环境：
 
 ```bash
-pip install -r requirements.txt
+conda env update -f environment.yml --prune
 ```
 
-如果需要独立运行 RAG 模块，还需进入 `RAG/` 目录安装其依赖：
+也可以使用 Python 虚拟环境安装：
 
 ```bash
-cd RAG
-pip install -r requirements.txt
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e .
 ```
 
-### 配置 LLM API
+在 Windows PowerShell 中，使用 `\.venv\Scripts\Activate.ps1` 激活环境。
 
-复制 `.example.env` 为 `.env`，填入实际值：
+## 准备模型
 
+真实推理与评估优先使用以下路径中本地训练得到的检查点：
+
+```text
+checkpoints/bertweet/best_model/
 ```
+
+如果该目录不存在，项目会下载 `model.huggingface_checkpoint` 配置的微调检查点。本地训练成功后生成的检查点会自动优先使用。训练数据至少需要包含 `text` 和 `label` 两列，其中 `0` 表示非谣言，`1` 表示谣言。这里采用 PHEME 风格的标注，表示信息发布时是否未经证实；“谣言”不等同于最终被判定为虚假。
+
+```csv
+text,label
+"This claim is confirmed by an official source.",0
+"A celebrity secretly died yesterday.",1
+```
+
+数据路径采用本地优先策略。如果配置的文件不存在，项目会根据 `configs/bertweet.yaml` 中的 `data.huggingface` 映射，从指定数据集仓库下载对应的 Parquet 文件，并复用 Hugging Face 缓存。
+
+使用 `configs/bertweet.yaml` 中的默认配置训练：
+
+```bash
+python main.py train
+```
+
+预训练模型 `vinai/bertweet-base` 会缓存在 `checkpoints/base/`。系统按验证集 macro-F1 选择最佳模型，并保存至 `checkpoints/bertweet/best_model/`；指标、训练历史和曲线保存在 `outputs/bertweet/`。
+
+## 可选的 LLM 与 RAG 配置
+
+本节只适用于完整的可解释演示。ML-only 演示与模型评估不需要 API 密钥或 RAG 数据库。
+
+### 配置 LLM
+
+复制环境变量模板：
+
+```bash
+cp .example.env .env
+```
+
+Windows PowerShell 使用 `Copy-Item .example.env .env`。
+
+在 `.env` 中填写兼容 OpenAI API 的配置：
+
+```text
 API=https://models.sjtu.edu.cn/api/v1
 API_SECRET=your-api-key
 API_MODEL=deepseek-reasoner
 ```
 
-配置指引见 https://claw.sjtu.edu.cn/guide/sjtu-api/
+### 启用 RAG
 
-注意：`.env` 仅用于本地运行，请勿提交到 GitHub。
+项目首先在以下位置查找数据库：
 
-### 启动前端
+```text
+datasets/ChromaDB_data_populate/DataBase/data
+```
+
+如果本地数据库不存在，系统会从配置的 Hugging Face 仓库下载 `ChromaDB_data_populate.zip`（默认仓库为 `MingchenDai/NIS4307-ChromaDB_data_populate`），安全解压到上述位置，并在后续运行中复用。可通过 `RAG_CHROMA_HF_REPO_ID`、`RAG_CHROMA_HF_REVISION`、`RAG_CHROMA_HF_REPO_TYPE` 和 `RAG_CHROMA_HF_ARCHIVE` 修改仓库及文件配置。
+
+RAG 为可选功能。数据库无法下载或加载时，Web 应用仍可在没有检索证据的情况下运行。
+
+## 运行 Web 演示
+
+启动前请确认环境已激活。如果需要查看真实的 ML 预测，还必须准备好微调后的检查点。
+
+运行完整的 ML、LLM 与可用 RAG 流程：
 
 ```bash
-python main.py
+python main.py serve
 ```
 
-默认监听 `0.0.0.0:8000`，浏览器访问 `http://localhost:8000`。
+浏览器访问 `http://localhost:8000`。
 
-若已正确解压 RAG 数据库，前端分析结果中会显示 **RAG Retrieved Evidence** 区域；若未配置 RAG 数据库，系统仍可正常完成 BERTweet + LLM 分析。
+无需配置 LLM 和 RAG 的 BERTweet-only 演示：
 
-### CLI 选项
-
+```bash
+python main.py serve --no-llm --no-rag
 ```
-python main.py            默认启动前端
-python main.py --display  启动前端
-python main.py --train    训练模型
-python main.py --help     查看帮助
+
+> **检查点规则**：系统优先使用本地训练的 `checkpoints/bertweet/best_model/`。如果该目录不存在，则下载并缓存配置的 Hugging Face 检查点。如果本地和远程检查点都无法解析，Web 界面会显示分类错误。只有显式传入 `python main.py serve --mock-model` 时才会生成模拟预测。
+
+## 使用自定义测试集评估
+
+该流程用于按照课程评分要求，在自行构造的数据集上评估模型。评估只使用训练后的 BERTweet 检查点，不调用 LLM API 或 RAG 模块。
+
+创建至少包含 `text` 和 `label` 两列的 CSV：
+
+```csv
+text,label
+"This report cites a verifiable government announcement.",0
+"Scientists secretly confirmed an impossible cure overnight.",1
 ```
+
+CSV 可以包含额外列。缺少文本、缺少标签或标签不属于 `0`、`1` 的行会在评估时被排除。
+
+使用配置中的最佳检查点评估：
+
+```bash
+python main.py evaluate --test datasets/my_test.csv
+```
+
+如果本地路径不存在，`--test` 也会使用配置的 Hugging Face 映射。例如，`--test datasets/val.csv` 会获取远程 validation Parquet 文件；已存在的本地文件始终优先。若需使用其他远程测试文件，请先在 `data.huggingface.files` 中添加映射。
+
+也可以指定检查点和输出文件：
+
+```bash
+python main.py evaluate \
+  --test datasets/my_test.csv \
+  --checkpoint checkpoints/bertweet/best_model \
+  --output outputs/bertweet/my_test_metrics.json
+```
+
+命令会输出 macro-F1、accuracy 和 confusion matrix。未指定 `--output` 时，自定义测试结果保存在 `outputs/bertweet/test_metrics.json`。
+
+## 项目结构
+
+```text
+configs/        模型与训练配置
+datasets/       本地训练、测试及 RAG 数据
+docs/           模块文档与架构图片
+report/         技术报告源文件与编译结果
+src/model/      数据处理、训练、评估与推理
+src/rag/        可选的 ChromaDB 检索与 RAG 工具
+src/web/        FastAPI 应用与 Web 模板
+src/cli/        命令实现与参数校验
+tests/          CLI 与配置回归测试
+main.py         统一命令行入口
+```
+
+### 旧导入路径兼容
+
+为便于协作者平滑合并，旧目录结构保留了临时转发模块。旧路径仍可使用，但会产生 `DeprecationWarning`；新代码应使用下列规范路径。
+
+| 旧路径 | 规范路径 |
+| --- | --- |
+| `src.app` | `src.web.app` |
+| `src.api_service` | `src.web.llm_service` |
+| `src.rag_service` | `src.rag.service` |
+| `src.training` | `src.model.pipeline` |
+| `src.data`、`src.metrics`、`src.utils` | `src.model` 下的同名模块 |
+| `scripts.*` | `src.cli` 下的同名模块 |
+
+这些兼容模块不包含独立实现；待现有协作分支完成迁移后即可单独删除。
+
+## 命令概览
+
+| 命令 | 用途 |
+| --- | --- |
+| `python main.py serve` | 启动 Web 演示 |
+| `python main.py train` | 训练 BERTweet 模型 |
+| `python main.py evaluate --test FILE.csv` | 评估带标签的测试集 |
+| `python main.py predict "TEXT"` | 对单条语句分类 |
+| `python main.py plot-history` | 重新生成训练曲线 |
+| `python main.py rag query "TEXT"` | 运行独立 RAG 分析 |
+
+查看完整参数：
+
+```bash
+python main.py --help
+python main.py COMMAND --help
+```
+
+## 技术文档
+
+- [机器学习模型](model.md)：BERTweet 架构、数据准备、训练、评估、预测与输出文件
+- [前端](frontend.md)：FastAPI/Jinja 架构、分析流程、环境配置与 ML 接口约定
+- [技术报告](../report/)：详细的模型设计、实验、结果与分析
+- [英文 README](../README.md)：英文项目安装与使用说明

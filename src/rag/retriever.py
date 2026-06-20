@@ -7,7 +7,7 @@ chroma_retriever.py
   - 使用与建库一致的 embedding function
   - 返回 top-k 证据（document / label / source / distance）
 
-兼容 chromadb 0.4.x 和 1.x
+兼容当前发布的 ChromaDB 数据库 schema（1.x）。
 """
 
 from __future__ import annotations
@@ -16,18 +16,22 @@ import os
 import re
 from typing import List, Dict, Any, Optional
 
+from src.rag import config
+
 # ----------------------------------------------------------------------
 # 设置离线模式，避免连接 huggingface.co 下载模型
 # 模型应已缓存在本地：~/.cache/huggingface/ 或 ~/.cache/torch/
 # ----------------------------------------------------------------------
-os.environ.setdefault("HF_HUB_OFFLINE", "1")
-os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+if config.HF_ENDPOINT:
+    os.environ.setdefault("HF_ENDPOINT", config.HF_ENDPOINT)
+if config.HF_HUB_OFFLINE:
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+if config.TRANSFORMERS_OFFLINE:
+    os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
 import chromadb
 from chromadb.utils import embedding_functions
 from chromadb.api.models.Collection import Collection
-
-import config
 
 
 # ----------------------------------------------------------------------
@@ -65,7 +69,7 @@ def _truncate(text: str, limit: int = 400) -> str:
 class ChromaRetriever:
     """
     加载 ChromaDB 并提供 top-k 检索能力。
-    兼容 chromadb 0.4.x 和 1.x
+    兼容当前发布的 ChromaDB 数据库 schema（1.x）。
     """
 
     def __init__(
@@ -74,7 +78,7 @@ class ChromaRetriever:
         embedding_model: Optional[str] = None,
         keywords: Optional[List[str]] = None,
     ):
-        self.db_path = db_path or config.CHROMA_DB_PATH
+        self.db_path = db_path or config.ensure_chroma_database()
         self.embedding_model = embedding_model or config.EMBEDDING_MODEL_NAME
         # 关键字统一小写
         self.keywords = [k.lower() for k in (keywords if keywords is not None else config.COLLECTION_KEYWORDS)]
@@ -117,6 +121,12 @@ class ChromaRetriever:
         try:
             all_cols = self.client.list_collections()
         except Exception as e:
+            if "collections.topic" in str(e):
+                raise RuntimeError(
+                    "ChromaDB schema/client mismatch: this database no longer has "
+                    "collections.topic. Install the unified environment with "
+                    "`chromadb>=1.0,<2`, then retry."
+                ) from e
             raise RuntimeError(f"列出 ChromaDB collection 失败: {e}") from e
 
         names: List[str] = []

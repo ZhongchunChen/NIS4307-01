@@ -1,244 +1,231 @@
 # Rumor Detection System
 
-Course Project of NIS4307 *Introduction to Artificial Intelligence*, Shanghai Jiao Tong University.
+> **NIS4307: Introduction to Artificial Intelligence** — Course Project by Group 4, Shanghai Jiao Tong University.
 
-[中文文档](docs/README_CN.md)
+**Authors**:
+* Zhongchun Chen [@ZhongchunChen](https://github.com/ZhongchunChen)
+* Runze Shen [@RanceChen06](https://github.com/RanceChen06)
+* Mingchen Dai [@MingchenDai](https://github.com/MingchenDai)
+* Zihao Xie [@Zihao-Xie090](https://github.com/Zihao-Xie090)
+
+**Docs**: For Chinese docs, go to [中文文档](docs/README_CN.md).
+
+**Final Report**: The $\LaTeX$ source code (`report.tex`) and the compiled document (`report.pdf`) are located in the `/report` directory. Please ensure you are referencing the **latest** commit on the main branch for the most up-to-date version.
+
+**Table of Contents**:
+1. [Overview](#overview)
+2. [Setup](#setup)
+3. [Prepare the Model](#prepare-the-model)
+4. [Optional LLM and RAG Configuration](#optional-llm-and-rag-configuration)
+5. [Run the Web Demo](#run-the-web-demo)
+6. [Evaluate a Custom Test Dataset](#evaluate-a-custom-test-dataset)
+7. [Project Structure](#project-structure)
+8. [Command Summary](#command-summary)
 
 ## Overview
 
-This project combines a **fine-tuned BERTweet model**, **multi-stage LLM analysis**, and an optional **RAG evidence retrieval module** to build an explainable rumor detection system. Given an English statement, the system classifies it with a machine learning model, retrieves related evidence from a ChromaDB knowledge base when available, asks an LLM to analyze the statement, compares the ML and LLM verdicts, analyzes agreement or divergence, and presents the full analysis in a visual interface.
+The Rumor Detection System classifies English statements using a fine-tuned BERTweet model. Its web interface can optionally retrieve related evidence from ChromaDB and use an OpenAI-compatible LLM to explain the prediction, compare ML and LLM verdicts, and analyze agreement or divergence.
 
-## Project Structure
-
-```text
-NIS4307-01/
-├── RAG/                         # RAG module and ChromaDB retrieval code
-│   ├── chroma_retriever.py       # ChromaDB retriever
-│   ├── config.py                 # RAG configuration
-│   ├── em.py                     # Embedding / vectorization utilities
-│   ├── llm_judge.py              # Standalone RAG + LLM judging script
-│   ├── main.py                   # Standalone RAG entry point
-│   ├── requirements.txt          # RAG dependencies
-│   └── train.csv                 # RAG sample / auxiliary data
-├── configs/
-│   └── bertweet.yaml             # Model and training configuration
-├── docs/
-│   ├── frontend.md               # Frontend architecture documentation
-│   ├── model.md                  # Model training documentation
-│   └── README_CN.md              # Chinese README
-├── outputs/bertweet/             # Training metrics, plots, and evaluation outputs
-├── src/
-│   ├── app.py                    # FastAPI application factory
-│   ├── config.py                 # Configuration loader (.env + YAML)
-│   ├── model.py                  # BERTweet model wrapper
-│   ├── api_service.py            # LLM multi-stage analysis service
-│   ├── rag_service.py            # Main-system wrapper for RAG evidence retrieval
-│   ├── data.py                   # Dataset loading and cleaning
-│   ├── train.py                  # Training script
-│   ├── evaluate.py               # Evaluation script
-│   ├── predict.py                # Single-text prediction CLI
-│   ├── metrics.py                # Classification metrics
-│   ├── plot_history.py           # Training curve plotting
-│   ├── utils.py                  # Shared utilities
-│   └── templates/
-│       └── index.html            # Jinja2 frontend page
-├── .example.env                  # Environment variable template
-├── .gitignore                    # Git ignore rules
-├── README.md                     # Project README
-├── environment.yml               # Conda environment configuration
-├── main.py                       # Unified entry point
-├── pyproject.toml                # Project package configuration
-├── requirements.txt              # Python dependencies
-└── report.pdf                    # Final course report
-```
-
-## Architecture
-
-### Overall Pipeline
-
-```
-User submits a statement
-    │
-    ▼
-┌──────────────────────────────────────────────────────┐
-│  Step 1   classify_statement()     ← BERTweet model  │
-│           Returns {is_rumor, confidence}             │
-├──────────────────────────────────────────────────────┤
-│  Step 2   retrieve_rag_evidence()  ← Optional RAG    │
-│           Retrieves top-k evidence from ChromaDB     │
-├──────────────────────────────────────────────────────┤
-│  Step 3   judge_statement()        ← LLM Stage 1     │
-│           LLM judges with optional RAG evidence      │
-│           Returns {is_rumor, label, reasoning,       │
-│                    supporting_indicators}            │
-├──────────────────────────────────────────────────────┤
-│  Step 4   compare_results()        ← LLM Stage 2     │
-│           LLM compares ML and own verdicts           │
-│           Returns {agreement, comparison_summary}    │
-├──────────────────────────────────────────────────────┤
-│  Step 5   analyze_root_cause()     ← LLM Stage 3     │
-│           Convergent → unified explanation           │
-│           Divergent → root cause analysis            │
-│           Returns {root_cause_analysis,              │
-│                    key_indicators}                   │
-└──────────────────────────────────────────────────────┘
-    │
-    ▼
-Render HTML → returned to user
-```
-
-### ML Model
-
-A binary classifier fine-tuned from `vinai/bertweet-base`:
-
-```
-raw text → BERTweet tokenizer → BERTweet encoder → dropout → linear head → [rumor / not rumor]
-```
-
-Outputs softmax probabilities for two classes. Confidence is the probability of the predicted class.
-
-### RAG Evidence Retrieval
-
-The optional RAG module retrieves top-k related evidence from a local ChromaDB knowledge base and passes the retrieved evidence to the LLM prompt. RAG does **not** modify the BERTweet model's binary prediction. It is used only as additional context for explanation and comparison.
-
-Runtime behavior:
-
-- If the RAG database and dependencies are available, the main app calls `retrieve_rag_evidence()` before LLM Stage 1.
-- Retrieved evidence is shown in the frontend under **RAG Retrieved Evidence**.
-- If RAG is unavailable, the app falls back to the original BERTweet + LLM pipeline and continues to run.
-
-### LLM Analysis (Three Stages)
-
-| Stage | Function | Purpose |
-|-------|----------|---------|
-| Stage 1 | `judge_statement()` | LLM judges the text across five dimensions: verifiability, source credibility, logical coherence, emotional language, and specificity, with optional RAG evidence as reference |
-| Stage 2 | `compare_results()` | LLM compares the ML verdict with its own, determining agreement or divergence |
-| Stage 3 | `analyze_root_cause()` | If convergent: synthesizes a unified explanation. If divergent: analyzes what misled which system |
-
-### Display
-
-- Three-column verdict header: ML Verdict | LLM Verdict (with yellow ⚠ on divergence) | Confidence
-- Two-column detail: LLM Analysis (reasoning + indicators) | Comparison (summary + root cause + key indicators)
-- RAG Retrieved Evidence: top retrieved evidence items with source, label, distance, and text when RAG is available
-
-## Training
-
-### Data Preparation
-
-Place `train.csv` and `val.csv` under `datasets/` with `text` and `label` columns:
-
-```csv
-text,label
-"This appears to be a rumor",1
-"This is verified news",0
-```
-
-### Configuration
-
-Edit `configs/bertweet.yaml` to adjust hyperparameters and paths. Key options:
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `data.train_path` | `datasets/train.csv` | Training set path |
-| `data.val_path` | `datasets/val.csv` | Validation set path |
-| `training.epochs` | 16 | Number of epochs |
-| `training.learning_rate` | 1e-5 | Learning rate |
-| `training.early_stopping_metric` | `macro_f1` | Early stopping metric |
-| `training.early_stopping_patience` | 2 | Early stopping patience |
-
-### Run Training
-
-```bash
-python main.py --train
-```
-
-The first run downloads `vinai/bertweet-base` from Hugging Face and caches it at `checkpoints/base/`. The best model is saved to `checkpoints/bertweet/best_model/`, with plots and metrics in `outputs/bertweet/`.
-
-### Evaluate
-
-```bash
-python -m src.evaluate --config configs/bertweet.yaml
-```
-
-### Predict via CLI
-
-```bash
-python -m src.predict --config configs/bertweet.yaml --text "Example text"
-```
+The components remain independent where practical. Training and evaluation require only the ML model, while LLM and RAG support can be enabled for the complete interactive demo. Detailed architecture, experiments, and technical analysis are provided in the [final report](report/report.pdf) and documents under `docs/`.
 
 ## Setup
 
-### Install Dependencies
-
-Conda (recommended):
+Conda with Python 3.10 is the recommended environment:
 
 ```bash
 conda env create -f environment.yml
 conda activate intro2ai
 ```
 
-Or pip:
+Update an existing environment after dependency changes with:
 
 ```bash
-pip install -r requirements.txt
+conda env update -f environment.yml --prune
 ```
 
-### Configure LLM API
+Alternatively, install the project in a virtual environment:
 
-Copy `.example.env` to `.env` and fill in your credentials:
-
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e .
 ```
+
+On Windows PowerShell, activate it with `\.venv\Scripts\Activate.ps1`.
+
+## Prepare the Model
+
+> **Using the provided checkpoint:** Local training is optional. If no trained
+> checkpoint is available locally, the configured fine-tuned model is downloaded
+> automatically from Hugging Face on first use.
+
+Real inference and evaluation prefer a locally trained checkpoint at:
+
+```text
+checkpoints/bertweet/best_model/
+```
+
+If that directory is absent, the project downloads the fine-tuned checkpoint configured under `model.huggingface_checkpoint`. A successful local training run takes precedence automatically. To train, the datasets must contain `text` and `label` columns, where `0` means non-rumor and `1` means rumor. These are PHEME-style annotations of whether a claim was unverified when posted; a rumor is not necessarily ultimately false.
+
+```csv
+text,label
+"This claim is confirmed by an official source.",0
+"A celebrity secretly died yesterday.",1
+```
+
+Dataset paths are local-first. If a configured file is absent, the project downloads its mapped Parquet file from the Hugging Face dataset repository configured under `data.huggingface` in `configs/bertweet.yaml` and reuses the Hugging Face cache.
+
+Train with the defaults in `configs/bertweet.yaml`:
+
+```bash
+python main.py train
+```
+
+The pretrained `vinai/bertweet-base` model is cached under `checkpoints/base/`. The best checkpoint is selected by validation macro-F1 and saved under `checkpoints/bertweet/best_model/`. Metrics, training history, and plots are written to `outputs/bertweet/`.
+
+## Optional LLM and RAG Configuration
+
+This section is required only for the complete explanatory demo. ML-only display and evaluation do not require an API key or RAG database.
+
+### Configure the LLM
+
+Copy the environment template:
+
+```bash
+cp .example.env .env
+```
+
+On Windows PowerShell, use `Copy-Item .example.env .env`.
+
+Set the OpenAI-compatible API values in `.env`:
+
+```text
 API=https://models.sjtu.edu.cn/api/v1
 API_SECRET=your-api-key
 API_MODEL=deepseek-reasoner
 ```
 
-See https://claw.sjtu.edu.cn/guide/sjtu-api/ for setup instructions.
+### Enable RAG
 
-### Optional: Enable RAG Evidence Retrieval
+> **Using the provided RAG database:** No manual database setup is required. If
+> the local database is missing, the configured archive is downloaded from
+> Hugging Face and extracted automatically on first use.
 
-RAG code is located under `RAG/`. The ChromaDB database is large and is not stored directly in the Git repository. To enable RAG in the frontend:
-
-1. Open the GitHub **Releases** page.
-2. Download `ChromaDB_data_populate.zip` from the release named **ChromaDB database for RAG**.
-3. Extract the zip file into the `RAG/` directory.
-
-After extraction, the path should look like:
+The project first looks for the database at:
 
 ```text
-RAG/ChromaDB_data_populate/DataBase/data
+datasets/ChromaDB_data_populate/DataBase/data
 ```
 
-Install RAG-specific dependencies if needed:
+If it is missing, `ChromaDB_data_populate.zip` is downloaded from the configured Hugging Face repository (`MingchenDai/NIS4307-ChromaDB_data_populate` by default), safely extracted to that location, and reused on later runs. The repository, revision, type, and archive filename can be overridden with `RAG_CHROMA_HF_REPO_ID`, `RAG_CHROMA_HF_REVISION`, `RAG_CHROMA_HF_REPO_TYPE`, and `RAG_CHROMA_HF_ARCHIVE`.
+
+RAG is optional. If the database cannot be downloaded or loaded, the web application continues without retrieved evidence.
+
+## Run the Web Demo
+
+Before starting, ensure the environment is active and a real checkpoint is available if you intend to inspect meaningful ML predictions.
+
+Run the complete ML, LLM, and available RAG workflow:
 
 ```bash
-cd RAG
-pip install -r requirements.txt
-cd ..
+python main.py serve
 ```
 
-When RAG is correctly configured, the frontend will display a **RAG Retrieved Evidence** section after analysis. If the database or dependencies are missing, the main app still runs without RAG evidence.
+Open `http://localhost:8000` in a browser.
 
-You can also run the standalone RAG demo:
+Run the BERTweet-only display without LLM or RAG configuration:
 
 ```bash
-cd RAG
-python main.py
+python main.py serve --no-llm --no-rag
 ```
 
-### Launch the Frontend
+> **Checkpoint behavior:** The locally trained `checkpoints/bertweet/best_model/` is preferred. If it is missing, the configured Hugging Face checkpoint is downloaded and cached. If neither checkpoint can be resolved, the web interface reports a classification error. Synthetic predictions are available only with `python main.py serve --mock-model`.
+
+## Evaluate a Custom Test Dataset
+
+This workflow supports evaluation on self-created data for the course grading policy. It uses only the trained BERTweet checkpoint and does not call the LLM API or RAG module.
+
+Create a CSV containing at least `text` and `label` columns:
+
+```csv
+text,label
+"This report cites a verifiable government announcement.",0
+"Scientists secretly confirmed an impossible cure overnight.",1
+```
+
+Additional columns are allowed. Rows with missing text, missing labels, or labels outside `0` and `1` are excluded.
+
+Evaluate the configured best checkpoint:
 
 ```bash
-python main.py
+python main.py evaluate --test datasets/my_test.csv
 ```
 
-Listens on `0.0.0.0:8000`. Open `http://localhost:8000` in a browser.
+If the local path does not exist, `--test` also uses the configured Hugging Face mapping. For example, `--test datasets/val.csv` retrieves the remote validation Parquet file; an existing local file always takes precedence. Add custom remote test files to `data.huggingface.files` before referencing them with `--test`.
 
-### CLI Options
+Or specify a checkpoint and output file:
 
+```bash
+python main.py evaluate \
+  --test datasets/my_test.csv \
+  --checkpoint checkpoints/bertweet/best_model \
+  --output outputs/bertweet/my_test_metrics.json
 ```
-python main.py              Start the frontend (default)
-python main.py --display    Start the frontend
-python main.py --train      Train the model
-python main.py --help       Show help
+
+The command prints macro-F1, accuracy, and the confusion matrix. Without `--output`, custom-test results are saved to `outputs/bertweet/test_metrics.json`.
+
+## Project Structure
+
+```text
+configs/        Model and training configuration
+datasets/       Local training, test, and RAG data
+docs/           Module documentation and architecture assets
+report/         Technical report source and compiled document
+src/model/      Data processing, training, evaluation, and inference
+src/rag/        Optional ChromaDB retrieval and RAG utilities
+src/web/        FastAPI application and web template
+src/cli/        Command implementations and argument validation
+tests/          CLI and configuration regression tests
+main.py         Unified command-line entry point
 ```
+
+### Legacy Import Compatibility
+
+Temporary forwarding modules keep collaborator branches using the previous layout working. They emit `DeprecationWarning`; new code should use the canonical paths below.
+
+| Previous path | Canonical path |
+| --- | --- |
+| `src.app` | `src.web.app` |
+| `src.api_service` | `src.web.llm_service` |
+| `src.rag_service` | `src.rag.service` |
+| `src.training` | `src.model.pipeline` |
+| `src.data`, `src.metrics`, `src.utils` | Corresponding modules under `src.model` |
+| `scripts.*` | Corresponding modules under `src.cli` |
+
+The wrappers contain no implementation logic and can be removed after active collaborator branches migrate to the canonical imports.
+
+## Command Summary
+
+| Command | Purpose |
+| --- | --- |
+| `python main.py serve` | Start the web demo |
+| `python main.py train` | Train the BERTweet model |
+| `python main.py evaluate --test FILE.csv` | Evaluate a labeled test dataset |
+| `python main.py predict "TEXT"` | Classify one statement |
+| `python main.py plot-history` | Regenerate training plots |
+| `python main.py rag query "TEXT"` | Run standalone RAG analysis |
+
+For complete options:
+
+```bash
+python main.py --help
+python main.py COMMAND --help
+```
+
+## Technical Documentation
+
+- [Machine learning model](docs/model.md): BERTweet architecture, data preparation, training, evaluation, prediction, and generated artifacts
+- [Frontend](docs/frontend.md): FastAPI/Jinja architecture, analysis workflow, environment setup, and ML interface contract
+- [Technical report](report/): detailed model design, experiments, results, and analysis
+- [Chinese README](docs/README_CN.md): Chinese project setup and usage guide

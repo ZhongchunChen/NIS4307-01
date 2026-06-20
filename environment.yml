@@ -1,10 +1,14 @@
 name: intro2ai
 channels:
+  - conda-forge
   - defaults
 dependencies:
+  # Conda owns the interpreter; project dependencies come from pyproject.toml.
   - python=3.10
-  - pip
+  - pip>=23
+  - setuptools>=68
+  - wheel
   - pip:
-      - -r requirements.txt
+      - -e . [dev]
 variables:
   PYTHONNOUSERSITE: "1"
