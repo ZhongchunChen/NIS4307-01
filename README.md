@@ -56,6 +56,10 @@ On Windows PowerShell, activate it with `\.venv\Scripts\Activate.ps1`.
 
 ## Prepare the Model
 
+> **Using the provided checkpoint:** Local training is optional. If no trained
+> checkpoint is available locally, the configured fine-tuned model is downloaded
+> automatically from Hugging Face on first use.
+
 Real inference and evaluation prefer a locally trained checkpoint at:
 
 ```text
@@ -103,6 +107,10 @@ API_MODEL=deepseek-reasoner
 ```
 
 ### Enable RAG
+
+> **Using the provided RAG database:** No manual database setup is required. If
+> the local database is missing, the configured archive is downloaded from
+> Hugging Face and extracted automatically on first use.
 
 The project first looks for the database at:
 
