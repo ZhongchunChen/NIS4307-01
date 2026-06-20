@@ -162,17 +162,24 @@ def _plot_metric(
 
 def find_best_epoch(
     history: list[dict[str, Any]],
+    metric: str = "macro_f1",
+    mode: str = "max",
 ) -> int | None:
-    candidates = [record for record in history if "macro_f1" in record]
+    candidates = [record for record in history if metric in record]
     if not candidates:
         return None
-    best = max(candidates, key=lambda record: record["macro_f1"])
+    if mode == "min":
+        best = min(candidates, key=lambda record: record[metric])
+    else:
+        best = max(candidates, key=lambda record: record[metric])
     return int(best["epoch"])
 
 
 def plot_history(
     history: list[dict[str, Any]],
     output_dir: Path,
+    best_metric: str = "macro_f1",
+    best_metric_mode: str = "max",
 ) -> bool:
     try:
         os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
@@ -185,7 +192,7 @@ def plot_history(
         return False
 
     plots_dir = output_dir / "plots"
-    best_epoch = find_best_epoch(history)
+    best_epoch = find_best_epoch(history, best_metric, best_metric_mode)
     _plot_metric(
         history,
         plots_dir / "loss_curve.png",

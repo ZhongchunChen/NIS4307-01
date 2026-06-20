@@ -124,7 +124,7 @@ python main.py serve
 python main.py serve --no-llm --no-rag
 ```
 
-> **检查点规则**：系统优先使用本地训练的 `checkpoints/bertweet/best_model/`。如果该目录不存在，则下载并缓存配置的 Hugging Face 检查点。只有本地和远程检查点都无法解析时，Web 界面才会使用 mock 分类器。
+> **检查点规则**：系统优先使用本地训练的 `checkpoints/bertweet/best_model/`。如果该目录不存在，则下载并缓存配置的 Hugging Face 检查点。如果本地和远程检查点都无法解析，Web 界面会显示分类错误。只有显式传入 `python main.py serve --mock-model` 时才会生成模拟预测。
 
 ## 使用自定义测试集评估
 

@@ -83,3 +83,19 @@ def test_missing_comparison_does_not_claim_agreement(monkeypatch) -> None:
     assert "RUMOR" in response_text
     assert "agree on this verdict" not in response_text
     analyze.assert_not_called()
+
+
+def test_checkpoint_failure_renders_classification_error(monkeypatch) -> None:
+    monkeypatch.setattr(
+        web_app,
+        "classify_statement",
+        Mock(side_effect=OSError("checkpoint unavailable")),
+    )
+    app = web_app.create_app(enable_rag=False, enable_llm=False)
+
+    response = _analyze(app, "Example claim")
+    response_text = response.body.decode()
+
+    assert response.status_code == 200
+    assert "Classification failed: checkpoint unavailable" in response_text
+    assert "ML Verdict" not in response_text

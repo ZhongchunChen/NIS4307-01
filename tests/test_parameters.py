@@ -447,20 +447,41 @@ def test_remote_checkpoint_failure_becomes_file_not_found(
         resolve_checkpoint_path(config)
 
 
-def test_inference_uses_mock_when_checkpoint_loading_fails(
+def test_inference_propagates_checkpoint_loading_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from src.model import inference
 
-    mock_result = {"is_rumor": 1, "confidence": 0.75}
     inference.configure_inference(force_mock=False)
     monkeypatch.setattr(
         inference,
         "_ensure_model_loaded",
         Mock(side_effect=OSError("corrupt checkpoint")),
     )
-    mock_classifier = Mock(return_value=mock_result)
+    mock_classifier = Mock()
     monkeypatch.setattr(inference, "_mock_classify", mock_classifier)
 
-    assert inference.classify_statement("claim") == mock_result
+    with pytest.raises(OSError, match="corrupt checkpoint"):
+        inference.classify_statement("claim")
+    mock_classifier.assert_not_called()
+
+
+def test_inference_uses_mock_only_when_explicitly_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.model import inference
+
+    mock_result = {"is_rumor": 1, "confidence": 0.75}
+    ensure_model_loaded = Mock()
+    mock_classifier = Mock(return_value=mock_result)
+    monkeypatch.setattr(inference, "_ensure_model_loaded", ensure_model_loaded)
+    monkeypatch.setattr(inference, "_mock_classify", mock_classifier)
+    inference.configure_inference(force_mock=True)
+
+    try:
+        assert inference.classify_statement("claim") == mock_result
+    finally:
+        inference.configure_inference(force_mock=False)
+
+    ensure_model_loaded.assert_not_called()
     mock_classifier.assert_called_once_with("claim")

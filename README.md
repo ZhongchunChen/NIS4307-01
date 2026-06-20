@@ -132,7 +132,7 @@ Run the BERTweet-only display without LLM or RAG configuration:
 python main.py serve --no-llm --no-rag
 ```
 
-> **Checkpoint behavior:** The locally trained `checkpoints/bertweet/best_model/` is preferred. If it is missing, the configured Hugging Face checkpoint is downloaded and cached. The web interface uses its mock classifier only when neither checkpoint can be resolved.
+> **Checkpoint behavior:** The locally trained `checkpoints/bertweet/best_model/` is preferred. If it is missing, the configured Hugging Face checkpoint is downloaded and cached. If neither checkpoint can be resolved, the web interface reports a classification error. Synthetic predictions are available only with `python main.py serve --mock-model`.
 
 ## Evaluate a Custom Test Dataset
 

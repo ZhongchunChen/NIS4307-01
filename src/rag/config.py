@@ -136,8 +136,10 @@ EMBEDDING_MODEL_NAME = os.getenv(
     "sentence-transformers/all-MiniLM-L6-v2",
 )
 HF_ENDPOINT = os.getenv("HF_ENDPOINT", "")
-HF_HUB_OFFLINE = _bool_env("RAG_HF_HUB_OFFLINE", True)
-TRANSFORMERS_OFFLINE = _bool_env("RAG_TRANSFORMERS_OFFLINE", True)
+# Online access is the default so missing archives and embedding assets can be
+# downloaded. Set these flags explicitly for cached-only deployments.
+HF_HUB_OFFLINE = _bool_env("RAG_HF_HUB_OFFLINE", False)
+TRANSFORMERS_OFFLINE = _bool_env("RAG_TRANSFORMERS_OFFLINE", False)
 
 # ----------------------------------------------------------------------
 # 3) 检索相关

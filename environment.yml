@@ -9,6 +9,6 @@ dependencies:
   - setuptools>=68
   - wheel
   - pip:
-      - -e .
+      - -e . [dev]
 variables:
   PYTHONNOUSERSITE: "1"

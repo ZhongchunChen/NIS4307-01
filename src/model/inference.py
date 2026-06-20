@@ -2,8 +2,8 @@
 Rumor detection model.
 
 Wraps the BERTweet binary classifier for use by the FastAPI frontend.
-On first call, lazy-loads the trained model checkpoint. If no checkpoint
-is found, falls back to a mock classifier for frontend testing.
+On first call, lazy-loads the trained model checkpoint. Synthetic predictions
+are available only when mock mode is explicitly enabled.
 """
 
 import html
@@ -86,11 +86,7 @@ def classify_statement(statement: str) -> dict[str, int | float]:
     if _force_mock:
         return _mock_classify(statement)
 
-    try:
-        _ensure_model_loaded()
-    except (FileNotFoundError, OSError) as exc:
-        _logger.warning("Checkpoint unavailable, using mock classifier: %s", exc)
-        return _mock_classify(statement)
+    _ensure_model_loaded()
 
     cleaned = " ".join(html.unescape(statement).split())
     encoded = _tokenizer(

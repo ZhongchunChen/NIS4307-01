@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -41,3 +42,19 @@ def test_legacy_module_forwards_public_symbol(
         legacy = importlib.import_module(legacy_module)
 
     assert getattr(legacy, symbol) is getattr(canonical, symbol)
+
+
+def test_legacy_training_plot_api_accepts_metric_and_mode(tmp_path: Path) -> None:
+    sys.modules.pop("src.training", None)
+    with pytest.warns(DeprecationWarning, match="src.training is deprecated"):
+        legacy_training = importlib.import_module("src.training")
+
+    history = [
+        {"epoch": 1, "loss": 0.8, "macro_f1": 0.7},
+        {"epoch": 2, "loss": 0.4, "macro_f1": 0.6},
+    ]
+
+    assert legacy_training.find_best_epoch(history, "loss", "min") == 2
+    assert legacy_training.find_best_epoch(history) == 1
+    assert legacy_training.plot_history(history, tmp_path, "loss", "min") is True
+    assert (tmp_path / "plots" / "loss_curve.png").is_file()

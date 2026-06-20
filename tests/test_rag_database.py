@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import importlib
+import os
 import sys
 import zipfile
 from pathlib import Path
 from types import ModuleType
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 import pytest
 
@@ -19,11 +20,108 @@ def test_importing_retriever_does_not_resolve_database(
 ) -> None:
     ensure_database = Mock()
     monkeypatch.setattr(config, "ensure_chroma_database", ensure_database)
+    monkeypatch.setattr(config, "HF_HUB_OFFLINE", False)
+    monkeypatch.setattr(config, "TRANSFORMERS_OFFLINE", False)
+    monkeypatch.delenv("HF_HUB_OFFLINE", raising=False)
+    monkeypatch.delenv("TRANSFORMERS_OFFLINE", raising=False)
     monkeypatch.delitem(sys.modules, "src.rag.retriever", raising=False)
 
     importlib.import_module("src.rag.retriever")
 
     ensure_database.assert_not_called()
+    assert os.getenv("HF_HUB_OFFLINE") is None
+    assert os.getenv("TRANSFORMERS_OFFLINE") is None
+
+
+def test_importing_build_index_does_not_open_chromadb(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    persistent_client = Mock(side_effect=AssertionError("must not open ChromaDB"))
+    chromadb_module = ModuleType("chromadb")
+    chromadb_module.PersistentClient = persistent_client  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "chromadb", chromadb_module)
+    monkeypatch.delitem(sys.modules, "src.rag.build_index", raising=False)
+
+    importlib.import_module("src.rag.build_index")
+
+    persistent_client.assert_not_called()
+
+
+def test_build_index_keeps_existing_database_when_sources_are_missing(
+    tmp_path: Path,
+) -> None:
+    from src.rag.build_index import build_index
+
+    database = tmp_path / "database"
+    database.mkdir()
+    marker = database / "existing-index"
+    marker.write_text("keep", encoding="utf-8")
+
+    with pytest.raises(FileNotFoundError, match="Missing RAG index source files"):
+        build_index(
+            database_path=database,
+            fever_claim_path=tmp_path / "missing-fever.jsonl",
+            train_csv_path=tmp_path / "missing-train.csv",
+        )
+
+    assert marker.read_text(encoding="utf-8") == "keep"
+
+
+def test_build_index_replaces_database_only_after_staging_succeeds(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from src.rag import build_index as build_index_module
+
+    database = tmp_path / "database"
+    database.mkdir()
+    (database / "old-index").write_text("old", encoding="utf-8")
+    monkeypatch.setattr(
+        build_index_module,
+        "_load_source_data",
+        Mock(return_value=(object(), [], object())),
+    )
+
+    def build_staged(staged_path, *_args):
+        staged_path.mkdir()
+        (staged_path / "chroma.sqlite3").write_text("new", encoding="utf-8")
+
+    monkeypatch.setattr(build_index_module, "_build_staged_database", build_staged)
+
+    result = build_index_module.build_index(database_path=database)
+
+    assert result == str(database)
+    assert not (database / "old-index").exists()
+    assert (database / "chroma.sqlite3").read_text(encoding="utf-8") == "new"
+
+
+def test_build_index_keeps_existing_database_when_staging_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from src.rag import build_index as build_index_module
+
+    database = tmp_path / "database"
+    database.mkdir()
+    marker = database / "old-index"
+    marker.write_text("old", encoding="utf-8")
+    monkeypatch.setattr(
+        build_index_module,
+        "_load_source_data",
+        Mock(return_value=(object(), [], object())),
+    )
+
+    def fail_staging(staged_path, *_args):
+        staged_path.mkdir()
+        (staged_path / "partial").touch()
+        raise RuntimeError("embedding failed")
+
+    monkeypatch.setattr(build_index_module, "_build_staged_database", fail_staging)
+
+    with pytest.raises(RuntimeError, match="embedding failed"):
+        build_index_module.build_index(database_path=database)
+
+    assert marker.read_text(encoding="utf-8") == "old"
 
 
 def test_pheme_numeric_labels_match_classifier_semantics() -> None:
@@ -97,6 +195,39 @@ def test_missing_chroma_database_is_downloaded_and_extracted(
         revision="v1",
         local_files_only=True,
     )
+
+
+def test_chroma_database_cache_miss_falls_back_to_online_download(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    class LocalCacheMiss(Exception):
+        pass
+
+    archive_path = tmp_path / "database.zip"
+    with zipfile.ZipFile(archive_path, "w") as archive:
+        archive.writestr("archive/data/chroma.sqlite3", "database")
+
+    download = Mock(side_effect=[LocalCacheMiss("not cached"), str(archive_path)])
+    hub_module = ModuleType("huggingface_hub")
+    hub_module.hf_hub_download = download  # type: ignore[attr-defined]
+    errors_module = ModuleType("huggingface_hub.errors")
+    errors_module.LocalEntryNotFoundError = LocalCacheMiss  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "huggingface_hub", hub_module)
+    monkeypatch.setitem(sys.modules, "huggingface_hub.errors", errors_module)
+    database = tmp_path / "installed" / "data"
+    expected_args = {
+        "repo_id": config.CHROMA_HF_REPO_ID,
+        "filename": config.CHROMA_HF_ARCHIVE,
+        "repo_type": config.CHROMA_HF_REPO_TYPE,
+        "revision": config.CHROMA_HF_REVISION,
+    }
+
+    assert config.ensure_chroma_database(database) == str(database)
+    assert download.call_args_list == [
+        call(**expected_args, local_files_only=True),
+        call(**expected_args),
+    ]
 
 
 def test_rag_cli_reports_database_failure_as_unavailable(
