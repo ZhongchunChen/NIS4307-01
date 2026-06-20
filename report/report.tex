@@ -86,27 +86,147 @@
 
 \begin{figure}[H]
     \centering
+    \resizebox{0.62\textwidth}{!}{%
     \begin{tikzpicture}[
-        node distance=1.2cm and 1.5cm,
-        box/.style={draw, rounded corners, fill=blue!10, text width=5cm, align=center, minimum height=1cm, font=\small},
-        arrow/.style={-{Stealth[scale=0.8]}, thick, line width=0.6pt},
+        node distance=0.9cm and 1.4cm,
+        startend/.style={
+            ellipse,
+            draw,
+            align=center,
+            minimum width=3.0cm,
+            minimum height=0.8cm,
+            fill=green!12,
+            font=\small
+        },
+        process/.style={
+            rectangle,
+            rounded corners,
+            draw,
+            align=center,
+            minimum width=4.1cm,
+            minimum height=0.85cm,
+            fill=blue!10,
+            font=\small
+        },
+        io/.style={
+            trapezium,
+            trapezium left angle=70,
+            trapezium right angle=110,
+            draw,
+            align=center,
+            minimum width=3.8cm,
+            minimum height=0.85cm,
+            fill=orange!12,
+            font=\small
+        },
+        decision/.style={
+            diamond,
+            draw,
+            align=center,
+            aspect=2.0,
+            inner sep=1.5pt,
+            text width=2.8cm,
+            fill=yellow!18,
+            font=\small
+        },
+        database/.style={
+            cylinder,
+            shape border rotate=90,
+            draw,
+            align=center,
+            minimum height=1.1cm,
+            minimum width=2.6cm,
+            fill=purple!10,
+            font=\small
+        },
+        arrow/.style={
+            -{Stealth[scale=0.85]},
+            thick,
+            line width=0.6pt
+        }
     ]
-        \node[box, fill=orange!12,] (input) {\textbf{输入文本}\\英文推文文本};
-        \node[box, below=0.5cm of input] (s1) {\textbf{BERTweet 分类}\\调用 \code{classify\_statement()}\\输出 0/1 分类结果与置信度};
-        \node[box, below=0.5cm of s1] (s2) {\textbf{证据检索}\\调用 \code{retrieve\_rag\_evidence()}\\从 ChromaDB 检索相关证据};
-        \node[box, right=2cm of s2] (s3) {\textbf{LLM 独立判断}\\调用LLM\\分析文本并独立判断};
-        \node[box, below=0.5cm of s2] (s4) {\textbf{结果比较}\\BERTweet结果与LLM判断比较\\判断两者是否一致};
-        \node[box, fill=green!12, below=0.5cm of s4] (s5) {\textbf{综合解释与前端渲染}\\LLM分析一致/分歧情况\\生成 Root Cause Analysis\\将完整结果渲染到前端页面};
-        \draw[arrow] (input) -- (s1);
-        \draw[arrow] (input) -| (s3);
-        \draw[arrow] (s1) -- (s2);
-        \draw[arrow] (s2) -- (s4);
-        \draw[arrow] (s3) |- (s4);
-        \draw[arrow] (s4) -- (s5);
+
+    % 节点
+    \node[startend] (start) {开始};
+    
+    \node[io, below=of start] (input) {
+        输入文本\\
+        英文推文文本
+    };
+
+    \node[process, below=of input] (bertweet) {
+        BERTweet 分类\\
+        调用 \texttt{classify\_statement()}\\
+        输出标签与置信度
+    };
+
+    \node[database, right=2.4cm of bertweet] (db) {
+        ChromaDB\\
+        证据库
+    };
+
+    \node[process, below=of bertweet] (rag) {
+        RAG 证据检索\\
+        调用 \texttt{retrieve\_rag\_evidence()}\\
+        返回 Top-k 相关证据
+    };
+
+    \node[process, below=of rag] (llm) {
+        LLM 独立判断\\
+        调用 \texttt{judge\_statement()}\\
+        结合证据生成判断依据
+    };
+
+    \node[process, below=of llm] (compare) {
+        结果比较\\
+        调用 \texttt{compare\_results()}\\
+        比较 ML 与 LLM 判断
+    };
+
+    \node[decision, below=of compare] (agree) {
+        ML 与 LLM\\
+        判断一致？
+    };
+
+    \node[process, below left=0.9cm and 1.4cm of agree] (unified) {
+        统一解释\\
+        生成一致性分析
+    };
+
+    \node[process, below right=0.9cm and 1.4cm of agree] (divergent) {
+        根因分析\\
+        分析分歧原因
+    };
+
+    \node[io, below=2.2cm of agree] (output) {
+        前端展示\\
+        ML / LLM / RAG 结果
+    };
+
+    \node[startend, below=of output] (end) {结束};
+
+    % 箭头
+    \draw[arrow] (start) -- (input);
+    \draw[arrow] (input) -- (bertweet);
+    \draw[arrow] (bertweet) -- (rag);
+    \draw[arrow] (db) -- (rag);
+    \draw[arrow] (rag) -- (llm);
+    \draw[arrow] (llm) -- (compare);
+    \draw[arrow] (bertweet.east) -- ++(1.1,0) |- (compare.east);
+    \draw[arrow] (compare) -- (agree);
+
+    \draw[arrow] (agree) -- node[left, font=\scriptsize] {是} (unified);
+    \draw[arrow] (agree) -- node[right, font=\scriptsize] {否} (divergent);
+
+    \draw[arrow] (unified) |- (output);
+    \draw[arrow] (divergent) |- (output);
+    \draw[arrow] (output) -- (end);
+
     \end{tikzpicture}
+    }
     \caption{系统处理流程图}
     \label{fig:pipeline}
-\end{figure}
+\end{figure}      
 
 系统最终通过前端页面展示完整检测结果，包含以下5部分：
 \begin{itemize}
@@ -122,80 +242,44 @@
 
 \subsubsection{数据处理模块 —— \code{src/data.py}}
 
-数据处理模块负责CSV数据的加载、清洗和PyTorch Dataset封装。核心函数 \code{load\_datasets()} 接收配置字典，依次读取训练集和验证集CSV文件，并委托 \code{\_clean\_split()} 完成单表清洗。
-
-\code{\_clean\_split()} 的清洗流程分为四步：（1）对每行文本调用 \code{normalize\_text()} 进行HTML解码和空白符合并，确保输入与BERTweet tokenizer的预期格式一致；（2）过滤标签不在$\{0,1\}$内的无效行；（3）若配置了 \code{remove\_conflicting\_texts}，则识别并移除同一文本对应多个不同标签的冲突样本；（4）若配置了 \code{drop\_duplicate\_texts}，则移除文本内容相同的重复行，仅保留首条。清洗完成后返回清洗报告，统计各步骤的移除数量。
-
-\code{load\_datasets()} 在分别清洗训练集和验证集后，额外执行训练集--验证集重叠检测，将验证集中与训练集文本重复的样本删除，防止数据泄漏导致评估失真。
-
-封装后的 \code{TweetDataset} 类继承 \code{torch.utils.data.Dataset}，在 \code{\_\_getitem\_\_()} 中调用 \code{tokenizer} 对文本进行编码（padding至 \code{max\_length}，截断超出部分），返回包含 \code{input\_ids}、\code{attention\_mask} 和 \code{labels} 的字典，直接适配Hugging Face \code{AutoModelForSequenceClassification} 的输入格式。
+数据处理模块负责读取\code{train.csv}和\code{val.csv}，并完成文本清洗、标签校验、重复样本和冲突样本处理。\code{load\_datasets()}调用\code{\_clean\_split()}分别清洗训练集与验证集，并额外删除训练集与验证集之间的重叠文本，降低数据泄漏风险。\code{TweetDataset}负责将清洗后的文本封装为PyTorch数据集，在\code{\_\_getitem\_\_()}中调用tokenizer生成\code{input\_ids}、\code{attention\_mask}和\code{labels}，供模型训练与验证使用。
 
 \subsubsection{模型定义与推理 —— \code{src/model.py}、\code{src/predict.py}}
 
-谣言检测模型基于Hugging Face的 \code{AutoModelForSequenceClassification}，输出层为2分类线性头。
-
-\code{src/model.py} 采用懒加载单例模式对外提供推理接口。模块级变量 \code{\_model}、\code{\_tokenizer}、\code{\_device} 初始为 \code{None}；首次调用 \code{classify\_statement()} 时触发 \code{\_ensure\_model\_loaded()}，从训练产出的 \code{best\_model} 目录加载微调后的模型和分词器，并切换至评估模式（\code{model.eval()}）。
-
-若检查点不存在，自动回退为 \code{\_mock\_classify()}，输出随机结果以保证前端测试可用。
-
-核心推理函数 \code{classify\_statement(statement: str) -> dict} 的执行流程为：（1）对输入文本进行HTML解码和空白符合并；（2）调用tokenizer编码为固定长度张量（\code{max\_length=128}，截断填充）；（3）在 \code{torch.no\_grad()} 上下文中前向传播，对输出的logits施加softmax得到类别概率分布；（4）取概率最大的类别作为预测标签（0或1），并将对应概率作为置信度返回。
-
-\code{src/predict.py} 提供了命令行推理入口，支持 \code{--text}、\code{--config}、\code{--checkpoint} 参数，输出包含标签和两类概率的JSON，便于离线批量测试。
+模型基于Hugging Face的\code{AutoModelForSequenceClassification}实现，分类头输出2类概率。\code{model.py}采用懒加载方式，在首次调用\code{classify\_statement()}时加载\code{checkpoints/bertweet/best\_model/}中的最佳模型和分词器，并切换到\code{eval()}模式。推理时系统先对输入文本进行规范化和编码，再在\code{torch.no\_grad()}下前向传播，对logits做softmax，返回预测标签和置信度。\code{predict.py}提供命令行预测接口，便于离线测试。
 
 \subsubsection{训练流程 —— \code{src/train.py}}
 
-训练脚本 \code{train()} 函数实现了完整的微调流水线，关键设计要点如下：
-
-\textbf{学习率调度与优化器配置。}采用AdamW优化器（\code{lr=1e-5，weight\_decay=0.01}）配合线性预热衰减调度（\code{warmup\_ratio=0.1}），预热步数占总步数的10\%，在预热阶段学习率从0线性增长至目标值，随后线性衰减至0。
-
-\textbf{混合精度与梯度累积。}支持自动混合精度训练（AMP），在CUDA设备上使用 \code{torch.amp.GradScaler} 和 \code{autocast} 加速前向传播；通过 \code{gradient\_accumulation\_steps} 控制梯度累积步数，等效增大批大小而不增加显存消耗。每步累积后调用 \code{clip\_grad\_norm\_()} 进行梯度裁剪（\code{max\_grad\_norm=1.0}），防止梯度爆炸。
-
-\textbf{早停机制。}每个epoch结束后在验证集上计算macro-F1，若连续 \code{patience=2} 个epoch未刷新最佳分数，则终止训练并将最佳检查点保存至 \code{best\_model/} 目录。最佳模型的tokenizer、权重和评估指标一并持久化，供后续推理模块懒加载使用。
-
-\textbf{训练曲线绘制。}\code{plot\_history()} 函数使用matplotlib在每个epoch后更新四幅曲线图（训练/验证loss、验证accuracy、验证macro-F1和梯度范数），输出至 \code{outputs/bertweet/plots/} 目录，便于训练过程中实时监控。
+训练脚本完成模型微调、验证评估和最佳模型保存。优化器使用AdamW，学习率为\code{1e-5}，并配合线性预热衰减调度。训练过程中每个epoch后在验证集上计算accuracy和macro-F1，并以macro-F1作为early stopping指标；当指标连续若干轮未提升时停止训练，保存最佳模型、tokenizer和训练指标。\code{plot\_history.py}用于生成训练曲线，辅助分析过拟合情况。
 
 \subsubsection{RAG检索增强 —— \code{src/rag\_service.py}}
 
-RAG模块为LLM分析提供辅助证据，不参与BERTweet的分类决策。函数 \code{retrieve\_rag\_evidence(statement, top\_k=3)} 动态导入 \code{RAG/chroma\_retriever.py} 中的 \code{ChromaRetriever} 类，调用其 \code{retrieve()} 方法从ChromaDB向量数据库中检索与输入文本最相似的top-k条样本，返回包含来源、标签、距离和文本内容的证据列表。
-
-模块采用防御式设计：所有RAG相关逻辑包裹在 \code{try/except} 块中，若ChromaDB数据库不存在、依赖未安装或检索过程出错，函数静默返回空列表，确保主检测流程不受RAG故障影响。该设计体现了“RAG为可选的解释增强模块”的系统定位。
+RAG模块用于为LLM解释提供参考证据。\code{retrieve\_rag\_evidence()}动态调用\code{RAG/chroma\_retriever.py}中的\code{ChromaRetriever}，从本地ChromaDB中检索Top-k相似证据，并返回来源、标签、距离和文本内容。RAG不直接参与BERTweet分类；若数据库缺失或依赖异常，函数返回空列表，保证主检测流程仍可运行。
 
 \subsubsection{LLM多阶段分析 —— \code{src/api\_service.py}}
 
 LLM分析模块是整个系统可解释性的核心，实现了三阶段提示工程管道：
 
-\textbf{第一阶段：独立判断（\code{judge\_statement()}）。}LLM在未看到BERTweet分类结果的情况下，结合输入文本和RAG检索证据进行独立分析。系统提示词要求LLM从可验证性、信源可信度、逻辑连贯性、情绪化语言和文本具体性五个维度评估，输出JSON格式的二元判断、标签、推理过程和支撑线索。温度参数设为0.3以减小随机性，RAG证据在用户提示词中以格式化文本呈现，并强调“证据仅供参���，不应盲目信任”。
-
-\textbf{第二阶段：结果比较（\code{compare\_results()}）。}将BERTweet的分类结果（标签+置信度）与LLM第一阶段结论并列呈现，要求LLM判断两者是否一致并生成比较摘要。该阶段温度同样设为0.3，输出经过JSON解析提取。
-
-\textbf{第三阶段：根因分析（\code{analyze\_root\_cause()}）。}根据第二阶段的一致性判断，分支选择不同的提示词模板——一致时提示LLM综合双方证据生成统一解释（\code{STAGE3\_CONVERGE\_PROMPT}），分歧时提示LLM分析双方结论相悖的原因并评估哪一方更可信（\code{STAGE3\_DIVERGE\_PROMPT}）。
-
-三阶段设计实现了“独立判断—交叉验证—根因追溯”的递进分析模式，输出层层递进，兼顾检测结果的可解释性和分歧诊断的透明度。
-
-\textbf{JSON解析的鲁棒性设计。}辅助函数 \code{\_parse\_json()} 采用三级回退策略：优先直接解析裸JSON；若失败则用正则匹配 \code{```json ... ```} 代码块；若仍未成功，则用正则提取首个花括号包围的片段。三级回退确保即使LLM输出格式出现波动（如额外markdown包裹），系统仍能提取结构化结果。
+LLM模块采用三阶段分析。第一阶段\code{judge\_statement()}结合输入文本和RAG证据进行独立判断，并输出结构化JSON；第二阶段\code{compare\_results()}比较ML与LLM结果是否一致；第三阶段\code{analyze\_root\_cause()}根据一致或分歧情况生成统一解释或根因分析。为了提高稳定性，\code{\_parse\_json()}对LLM返回结果进行容错解析，尽量从普通JSON、Markdown代码块或文本片段中提取结构化字段。
 
 \subsubsection{FastAPI前端集成 —— \code{src/app.py}}
 
-前端使用FastAPI框架构建，核心为单一POST端点 \code{/analyze}。\code{create\_app()} 工厂函数创建FastAPI实例并注册Jinja2模板引擎。
-
-\code{analyze()} 处理函数按以下顺序编排五个步骤：（1）\code{classify\_statement()} 进行BERTweet分类；（2）\code{retrieve\_rag\_evidence()} 检索RAG证据（失败则回退为空列表）；（3）\code{judge\_statement()} 执行LLM第一阶段独立判断；（4）\code{compare\_results()} 比较ML与LLM结果；（5）\code{analyze\_root\_cause()} 生成根因分析。每个步骤封装独立的异常处理，任一步骤失败均向用户返回具体错误信息，避免系统整体崩溃。
-
-最终返回的模板上下文包含完整结果集：ML Verdict、LLM Verdict、Confidence、LLM Reasoning、Comparison Summary、Root Cause Analysis、Key Indicators和RAG Evidence，所有数据渲染至 \code{index.html} 展示，如图\ref{fig:frontend}所示。
+\code{app.py}使用FastAPI组织完整流程。\code{/analyze}端点依次调用BERTweet分类、RAG检索、LLM独立判断、结果比较和根因分析，并将ML Verdict、LLM Verdict、Confidence、Reasoning、Comparison和RAG Evidence传入Jinja2模板。前端页面最终展示检测结果、解释文本和检索证据，如图\ref{fig:frontend}所示。
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{img/frontend.png}
+    \includegraphics[width=0.74\textwidth]{img/frontend.png}
     \caption{前端页面展示示例}
     \label{fig:frontend}
 \end{figure}
 
 \subsection{检测结果分析}
 
-本项目使用\code{train.csv}微调BERTweet模型，并在\code{val.csv}上验证。数据清洗后，训练集共2\,832条样本（非谣言1\,596条，谣言1\,236条），验证集共400条样本（非谣言225条，谣言175条），类别分布基本均衡，不存在严重的长尾偏差。训练配置方面，采用学习率$1\times10^{-5}$、批大小32，最大训练16个epoch，以验证集macro-F1作为早停指标（patience=2），即连续两个epoch未提升则终止训练。
+本项目使用 \code{train.csv} 微调 BERTweet 模型，并在 \code{val.csv} 上验证。数据清洗后，训练集共 2832 条样本（非谣言 1596 条，谣言 1236 条），验证集共 400 条样本（非谣言 225 条，谣言 175 条），类别分布基本均衡，无明显长尾偏差。训练配置为学习率 $1\times10^{-5}$、batch size 32、最大训练 16 个 epoch，并以验证集 macro-F1 作为 early stopping 指标，patience=2，用连续两个 epoch 未提升触发停止。
 
-实验结果显示，模型在第5个epoch取得最佳验证集表现：accuracy为0.8700，macro-F1为0.8688，验证集loss为0.3696。早停机制在第7个epoch后触发，系统最终保存第5轮macro-F1最优的模型权重作为最终检测模型。
+实验结果显示，模型在第 5 个 epoch 取得最佳验证集表现：accuracy 为 0.8700，macro-F1 为 0.8688，验证集 loss 为 0.3696。早停机制在第 7 个 epoch 后触发，系统最终保存第 5 轮 macro-F1 最优的模型权重作为最终检测模型。
 
-图\ref{fig:accuracy_curve}、图\ref{fig:f1_curve}与图\ref{fig:loss_curve}分别展示了验证集accuracy、macro-F1以及训练/验证loss随epoch的变化趋势。从accuracy与macro-F1曲线可以观察到，两项指标在前5轮持续上升，第5轮达到峰值后出现回落，第6--7轮均稳定在0.8625附近，不再继续改善。从loss曲线可以更清晰地看出过拟合现象：训练集loss从0.6735单调递减至0.1256，表明模型对训练数据的拟合程度持续加深；而验证集loss在第5轮降至0.3696后开始反弹（第6轮0.4160，第7轮0.4208），训练loss与验证loss之间的差距从第5轮的0.161扩大至第7轮的0.295，呈现典型的过拟合特征——模型在训练集上继续优化，但泛化能力反而退化。
+图3、图4与图5分别展示验证集 accuracy、macro-F1 以及训练/验证 loss 随 epoch 的变化。从曲线可见，accuracy 与 macro-F1 在前 5 轮持续上升，第 5 轮达到峰值后回落并趋于稳定；训练 loss 从 0.6735 下降到 0.1256，说明模型持续拟合训练集，而验证 loss 在第 5 轮降至 0.3696 后开始反弹（第 6 轮 0.4160，第 7 轮 0.4208），训练 loss 与验证 loss 的差距扩大，呈现典型过拟合特征。因此，采用 early stopping 能在性能峰值处保存模型，避免继续训练导致泛化能力下降。
 
 \begin{figure}[H]
     \centering
@@ -296,7 +380,7 @@ LLM分析模块是整个系统可解释性的核心，实现了三阶段提示�
     \label{fig:loss_curve}
 \end{figure}
 
-最佳模型在验证集上的混淆矩阵如表\ref{tab:confusion}所示。模型对非谣言类（label 0）的精确率为0.9061，召回率为0.8578，F1得分为0.8813；对谣言类（label 1）的精确率为0.8289，召回率为0.8857，F1得分为0.8564。谣言类的召回率（0.8857）略高于精确率（0.8289），表明模型倾向于将边界样本判为谣言，检出能力较强但存在一定误报——32例非谣言被误判为谣言（假阳性），20例谣言被漏判为非谣言（假阴性）。从应用角度看，谣言检测任务中漏判（假阴性）的危害通常大于误报，因此模型较高的谣言召回率是符合实际需求的特征。
+最佳模型在验证集上的混淆矩阵如表1所示。模型对非谣言类（label 0）的精确率为0.9061、召回率为0.8578、F1为0.8813；对谣言类（label 1）的精确率为0.8289、召回率为0.8857、F1为0.8564。结果表明，模型对两类样本均有较稳定的识别能力，其中谣言类召回率较高，说明其更倾向于检出潜在谣言，符合谣言检测任务中降低漏检的需求。误判方面，32例非谣言被误判为谣言，20例谣言被误判为非谣言。
 
 \begin{table}[H]
     \centering
