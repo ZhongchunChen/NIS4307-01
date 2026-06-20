@@ -1,10 +1,22 @@
 seed: 42
 
 data:
+  huggingface:
+    repo_id: PocketChen/SJTU_NIS4307_intro2ai_datasets
+    revision: main
+    local_dir: datasets
+    files:
+      datasets/train.csv: data/train-00000-of-00001.parquet
+      datasets/val.csv: data/validation-00000-of-00001.parquet
+      datasets/all_extra.parquet: data/all_extra-00000-of-00001.parquet
   train_path: datasets/train.csv
   val_path: datasets/val.csv
   text_column: text
   label_column: label
+  extra_datasets:
+    enabled: true
+    paths:
+      - datasets/all_extra.parquet
   cleaning:
     drop_duplicate_texts: true
     remove_conflicting_texts: true
@@ -13,6 +25,9 @@ data:
 model:
   pretrained_name: vinai/bertweet-base
   base_checkpoint_dir: checkpoints/base
+  huggingface_checkpoint:
+    repo_id: PocketChen/SJTU_NIS4307_intro2ai_bertweet
+    revision: main
   max_length: 128
   use_fast_tokenizer: false
   tokenizer_normalization: true
@@ -31,5 +46,4 @@ training:
   gradient_accumulation_steps: 1
   fp16: false
   num_workers: 2
-  early_stopping_metric: macro_f1
   early_stopping_patience: 2

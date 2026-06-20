@@ -23,7 +23,7 @@ import re
 from collections import Counter
 from typing import List, Dict, Any, Optional, Tuple
 
-import config
+from src.rag import config
 
 
 # ----------------------------------------------------------------------
@@ -125,8 +125,8 @@ def _call_openai(messages: List[Dict[str, str]]) -> str:
     raise RuntimeError(
         "调用 OpenAI 兼容接口失败：openai SDK 与 requests 兜底均报错。\n"
         f"最后一次错误: {last_err}\n"
-        "请检查：1) 是否在 config.py 中设置了 OPENAI_API_KEY；"
-        "2) OPENAI_API_BASE / OPENAI_MODEL_NAME 是否正确；"
+        "请检查：1) 是否在 .env 中设置了 API_SECRET；"
+        "2) API / API_MODEL 是否正确；"
         "3) 网络是否可达。"
     )
 
@@ -183,7 +183,7 @@ def _majority_vote(evidence: List[Dict[str, Any]]) -> Tuple[str, float, str]:
 
     if not weights:
         # 全是 nei / 未知
-        return "fake", 0.3, "证据不足，所有检索到的样本都没有明确真假标签，作为不确定性兜底默认 fake。"
+        return "unavailable", 0.0, "证据不足，检索结果没有明确真假标签，无法判断。"
 
     label = weights.most_common(1)[0][0]
     total = sum(weights.values())
@@ -220,16 +220,17 @@ def judge(query: str, evidence: List[Dict[str, Any]]) -> Dict[str, Any]:
             print(f"[warn] 调用 OpenAI 兼容接口出错，将走兜底: {e}")
             parsed = None
     else:
-        print("[info] 未配置 OPENAI_API_KEY，使用证据多数投票兜底。")
+        print("[info] 未配置 API_SECRET，使用证据多数投票兜底。")
 
     if parsed:
         label = str(parsed.get("label", "")).strip().lower()
         if label not in ("real", "fake"):
+            invalid_label = label
             label, conf, reason = _majority_vote(evidence)
             return {
                 "label": label,
                 "confidence": conf,
-                "reason": reason + f"（LLM 输出 label 非法: {label!r}）",
+                "reason": reason + f"（LLM 输出 label 非法: {invalid_label!r}）",
                 "_raw_llm": raw_text,
             }
         try:
@@ -259,7 +260,7 @@ def judge(query: str, evidence: List[Dict[str, Any]]) -> Dict[str, Any]:
 
     # 完全没有任何兜底
     return {
-        "label": "fake",
+        "label": "unavailable",
         "confidence": 0.0,
         "reason": "LLM 不可用且未开启兜底，无法判断。",
         "_raw_llm": raw_text,
@@ -270,7 +271,7 @@ def judge(query: str, evidence: List[Dict[str, Any]]) -> Dict[str, Any]:
 # 命令行调试
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
-    from chroma_retriever import ChromaRetriever
+    from src.rag.retriever import ChromaRetriever
 
     print("加载 ChromaDB ...")
     r = ChromaRetriever()

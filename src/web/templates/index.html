@@ -81,6 +81,7 @@
         }
         .badge-rumor { background: var(--rumor-bg); color: var(--rumor); }
         .badge-not { background: var(--not-rumor-bg); color: var(--not-rumor); }
+        .badge-unknown { background: var(--border); color: var(--text-secondary); }
         .warn-icon {
             display: inline-block; color: var(--warn); font-size: 1.3rem;
             margin-left: 0.35rem; vertical-align: middle;
@@ -122,6 +123,7 @@
         }
         .agreement-converge { background: var(--not-rumor-bg); color: var(--not-rumor); }
         .agreement-diverge { background: var(--warn-bg); color: #b8860b; }
+        .agreement-unavailable { background: var(--bg); color: var(--text-secondary); }
 
         .rag-section {
             margin-top: 1.75rem;
@@ -218,13 +220,17 @@
         {% if ml_is_rumor is defined %}
         <div class="card">
             <!-- Agreement banner -->
-            {% if agreement %}
+            {% if agreement is sameas true %}
             <div class="agreement-banner agreement-converge">
                 The ML model and LLM analysis agree on this verdict.
             </div>
-            {% else %}
+            {% elif agreement is sameas false %}
             <div class="agreement-banner agreement-diverge">
                 The ML model and LLM analysis disagree on this verdict — see comparison below.
+            </div>
+            {% else %}
+            <div class="agreement-banner agreement-unavailable">
+                LLM comparison is unavailable.
             </div>
             {% endif %}
 
@@ -238,10 +244,10 @@
                 </div>
                 <div class="verdict-col">
                     <div class="col-label">LLM Verdict</div>
-                    <span class="badge {{ 'badge-rumor' if llm_is_rumor else 'badge-not' }}">
+                    <span class="badge {{ 'badge-rumor' if llm_is_rumor == 1 else ('badge-not' if llm_is_rumor == 0 else 'badge-unknown') }}">
                         {{ llm_label }}
                     </span>
-                    {% if not agreement %}
+                    {% if agreement is sameas false %}
                     <span class="warn-icon">&#9888;</span>
                     {% endif %}
                 </div>

@@ -202,7 +202,7 @@ cython_debug/
 #   that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
 #   and can be added to the global gitignore or merged into this file. However, if you prefer, 
 #   you could uncomment the following to ignore the entire vscode folder
-# .vscode/
+.vscode/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
@@ -555,7 +555,8 @@ TSWLatexianTemp*
 
 .env
 checkpoints/
-datasets/
+datasets/*
+dataset/*
 *.py[cod]
 
 ### PROJECT-SPECIFIC FILES
@@ -567,18 +568,9 @@ datasets/
 __pycache__/
 *.pyc
 
-# Model caches and large checkpoints
-checkpoints/base/
 # If the fine-tuned model is distributed via Release or regenerated locally,
 # uncomment the next line to keep it out of Git.
 # checkpoints/bertweet/
-
-# RAG local vector database. Download ChromaDB_data_populate.zip from GitHub Releases
-# and extract it to RAG/ when running the RAG module locally.
-RAG/ChromaDB_data_populate/
-RAG/**/*.sqlite3
-RAG/**/*.sqlite
-RAG/**/*.db
 
 # Local runtime / cache directories
 .cache/
@@ -588,3 +580,8 @@ RAG/**/*.db
 .DS_Store
 Thumbs.db
 
+# Agents
+CLAUDE.md
+AGENTS.md
+.claude
+.codex

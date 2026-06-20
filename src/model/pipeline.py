@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import argparse
 import math
+import os
 import shutil
 from pathlib import Path
 from typing import Any
@@ -16,10 +16,9 @@ from tqdm.auto import tqdm
 from transformers import AutoModel, AutoModelForSequenceClassification, AutoTokenizer
 from transformers.optimization import get_linear_schedule_with_warmup
 
-from src.config import load_config
-from src.data import TweetDataset, load_datasets
-from src.metrics import classification_metrics
-from src.utils import get_device, save_json, set_seed
+from src.model.data import TweetDataset, load_datasets
+from src.model.metrics import classification_metrics
+from src.model.utils import get_device, save_json, set_seed
 
 
 def build_loader(
@@ -110,6 +109,7 @@ def _plot_metric(
     title: str,
     ylabel: str,
     plt: Any,
+    best_epoch: int | None = None,
 ) -> None:
     epochs = [record["epoch"] for record in history]
     plt.figure(figsize=(8, 5))
@@ -119,6 +119,26 @@ def _plot_metric(
         if len(values) == len(epochs):
             plt.plot(epochs, values, marker="o", label=key)
             plotted = True
+            if best_epoch is not None and best_epoch in epochs:
+                best_index = epochs.index(best_epoch)
+                best_value = values[best_index]
+                plt.scatter(
+                    [best_epoch],
+                    [best_value],
+                    color="red",
+                    s=70,
+                    zorder=5,
+                    label=f"best {key}" if len(metric_keys) == 1 else None,
+                )
+                plt.annotate(
+                    f"{best_value:.4f}",
+                    xy=(best_epoch, best_value),
+                    xytext=(8, 8),
+                    textcoords="offset points",
+                    color="red",
+                    fontsize=10,
+                    fontweight="bold",
+                )
     plt.title(title)
     plt.xlabel("epoch")
     plt.ylabel(ylabel)
@@ -140,8 +160,29 @@ def _plot_metric(
     plt.close()
 
 
-def plot_history(history: list[dict[str, Any]], output_dir: Path) -> bool:
+def find_best_epoch(
+    history: list[dict[str, Any]],
+    metric: str = "macro_f1",
+    mode: str = "max",
+) -> int | None:
+    candidates = [record for record in history if metric in record]
+    if not candidates:
+        return None
+    if mode == "min":
+        best = min(candidates, key=lambda record: record[metric])
+    else:
+        best = max(candidates, key=lambda record: record[metric])
+    return int(best["epoch"])
+
+
+def plot_history(
+    history: list[dict[str, Any]],
+    output_dir: Path,
+    best_metric: str = "macro_f1",
+    best_metric_mode: str = "max",
+) -> bool:
     try:
+        os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
         import matplotlib
 
         matplotlib.use("Agg")
@@ -151,6 +192,7 @@ def plot_history(history: list[dict[str, Any]], output_dir: Path) -> bool:
         return False
 
     plots_dir = output_dir / "plots"
+    best_epoch = find_best_epoch(history, best_metric, best_metric_mode)
     _plot_metric(
         history,
         plots_dir / "loss_curve.png",
@@ -158,6 +200,7 @@ def plot_history(history: list[dict[str, Any]], output_dir: Path) -> bool:
         "Training and Validation Loss",
         "loss",
         plt,
+        best_epoch,
     )
     _plot_metric(
         history,
@@ -166,6 +209,7 @@ def plot_history(history: list[dict[str, Any]], output_dir: Path) -> bool:
         "Validation Accuracy",
         "accuracy",
         plt,
+        best_epoch,
     )
     _plot_metric(
         history,
@@ -174,6 +218,7 @@ def plot_history(history: list[dict[str, Any]], output_dir: Path) -> bool:
         "Validation Macro-F1",
         "macro_f1",
         plt,
+        best_epoch,
     )
     _plot_metric(
         history,
@@ -182,6 +227,7 @@ def plot_history(history: list[dict[str, Any]], output_dir: Path) -> bool:
         "Gradient Norm",
         "grad_norm",
         plt,
+        best_epoch,
     )
     return True
 
@@ -312,7 +358,7 @@ def train(config: dict[str, Any]) -> None:
             f"avg_grad_norm={epoch_record['avg_grad_norm']:.4f}"
         )
 
-        score = float(metrics[training["early_stopping_metric"]])
+        score = float(metrics["macro_f1"])
         if score > best_score:
             best_score = score
             epochs_without_improvement = 0
@@ -321,24 +367,9 @@ def train(config: dict[str, Any]) -> None:
             save_json(metrics, output_dir / "best_metrics.json")
             shutil.copy2(config["_config_path"], output_dir / "config.yaml")
             shutil.copy2(config["_config_path"], checkpoint_dir / "config.yaml")
-            print(f"Saved best model with {training['early_stopping_metric']}={score:.4f}")
+            print(f"Saved best model with macro_f1={score:.4f}")
         else:
             epochs_without_improvement += 1
             if epochs_without_improvement >= training["early_stopping_patience"]:
                 print("Early stopping.")
                 break
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Fine-tune BERTweet for binary classification.")
-    parser.add_argument("--config", default="configs/bertweet.yaml")
-    return parser.parse_args()
-
-
-def main() -> None:
-    args = parse_args()
-    train(load_config(args.config))
-
-
-if __name__ == "__main__":
-    main()

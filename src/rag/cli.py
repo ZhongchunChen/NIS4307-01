@@ -10,21 +10,22 @@ main.py
   4) 输出固定 JSON
 
 用法：
-  python main.py "Breaking news: the queen is dead."
+  python -m src.rag.cli "Breaking news: the queen is dead."
 
-  python main.py          # 进入交互式输入
+  python -m src.rag.cli          # 进入交互式输入
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 import traceback
 from typing import Any, Dict, List
 
-import config
-from chroma_retriever import ChromaRetriever
-from llm_judge import judge
+from src.rag import config
+from src.rag.llm_judge import judge
+from src.rag.retriever import ChromaRetriever
 
 
 # ----------------------------------------------------------------------
@@ -54,10 +55,20 @@ def _evidence_to_schema(evidence: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 def build_output(query: str, evidence: List[Dict[str, Any]], judge_result: Dict[str, Any]) -> Dict[str, Any]:
     """组装最终对外的固定 JSON 结构。"""
     return {
-        "label": judge_result.get("label", "fake"),
+        "label": judge_result.get("label", "unavailable"),
         "confidence": judge_result.get("confidence", 0.0),
         "reason": judge_result.get("reason", ""),
         "evidence": _evidence_to_schema(evidence),
+    }
+
+
+def unavailable_output(reason: str) -> Dict[str, Any]:
+    """Return an explicit infrastructure/error result without a false verdict."""
+    return {
+        "label": "unavailable",
+        "confidence": 0.0,
+        "reason": reason,
+        "evidence": [],
     }
 
 
@@ -72,12 +83,7 @@ def run_once(query: str) -> Dict[str, Any]:
     except Exception as e:
         msg = f"无法加载 ChromaDB: {e}"
         print(f"[error] {msg}")
-        return {
-            "label": "fake",
-            "confidence": 0.0,
-            "reason": msg + "；无法判断。",
-            "evidence": [],
-        }
+        return unavailable_output(msg + "；无法判断。")
     print(f"      使用的 collection: {retriever.list_collections()}")
 
     print("\n[2/3] 检索 top-k 证据 ...")
@@ -85,12 +91,7 @@ def run_once(query: str) -> Dict[str, Any]:
         evidence = retriever.retrieve(query, top_k=config.TOP_K)
     except Exception as e:
         traceback.print_exc()
-        return {
-            "label": "fake",
-            "confidence": 0.0,
-            "reason": f"检索过程出错: {e}；无法判断。",
-            "evidence": [],
-        }
+        return unavailable_output(f"检索过程出错: {e}；无法判断。")
 
     print(f"      检索到 {len(evidence)} 条证据：")
     for ev in evidence:
@@ -105,10 +106,17 @@ def run_once(query: str) -> Dict[str, Any]:
     return build_output(query, evidence, judge_result)
 
 
-def main(argv: List[str]) -> int:
-    if len(argv) >= 2:
+def main(argv: List[str] | None = None) -> int:
+    argv = sys.argv if argv is None else argv
+    parser = argparse.ArgumentParser(
+        description="Classify a statement using ChromaDB evidence and an LLM.",
+    )
+    parser.add_argument("query", nargs="*", help="Statement to classify.")
+    args = parser.parse_args(argv[1:])
+
+    if args.query:
         # 命令行参数优先
-        query = " ".join(argv[1:]).strip()
+        query = " ".join(args.query).strip()
     else:
         try:
             query = input("请输入待鉴别的新闻 / 声明文本（输入 q 退出）：\n> ").strip()
@@ -135,7 +143,7 @@ def main(argv: List[str]) -> int:
     except Exception as e:
         print(f"\n[error] 输出 JSON 无法被解析: {e}")
         return 1
-    return 0
+    return 1 if result.get("label") == "unavailable" else 0
 
 
 if __name__ == "__main__":
