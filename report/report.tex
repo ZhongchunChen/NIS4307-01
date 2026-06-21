@@ -10,7 +10,7 @@
 \fancyhead[L]{上海交通大学计算机学院}
 \fancyhead[R]{NIS4307\ 人工智能导论（A类）}
 \fancyfoot[C]{\thepage}
-\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\code}[1]{\allowbreak\texttt{#1}\allowbreak}
 \usepackage{titlesec}
 \titlespacing{\paragraph}{0pt}{1ex plus 0ex minus .2ex}{1em}
 \usepackage{enumitem}
@@ -54,6 +54,7 @@
 \pgfplotsset{compat=1.18}
 \usetikzlibrary{arrows.meta, shapes, positioning, fit, backgrounds, calc, trees, decorations.pathreplacing}
 \title{\LARGE \textbf{NIS4307\ 人工智能导论（A类）}\\ \Huge 作业报告}
+\author{}
 \date{}
 \begin{document}
 \maketitle
@@ -88,7 +89,7 @@
     \centering
     \resizebox{0.62\textwidth}{!}{%
     \begin{tikzpicture}[
-        node distance=0.9cm and 1.4cm,
+        node distance=0.6cm and 1.4cm,
         startend/.style={
             ellipse,
             draw,
@@ -160,15 +161,15 @@
         输出标签与置信度
     };
 
-    \node[database, right=2.4cm of bertweet] (db) {
-        ChromaDB\\
-        证据库
-    };
-
     \node[process, below=of bertweet] (rag) {
         RAG 证据检索\\
         调用 \texttt{retrieve\_rag\_evidence()}\\
         返回 Top-k 相关证据
+    };
+
+    \node[database, right=2.4cm of rag] (db) {
+        ChromaDB\\
+        证据库
     };
 
     \node[process, below=of rag] (llm) {
@@ -215,8 +216,8 @@
     \draw[arrow] (bertweet.east) -- ++(1.1,0) |- (compare.east);
     \draw[arrow] (compare) -- (agree);
 
-    \draw[arrow] (agree) -- node[left, font=\scriptsize] {是} (unified);
-    \draw[arrow] (agree) -- node[right, font=\scriptsize] {否} (divergent);
+    \draw[arrow] (agree) -- node[above left, font=\scriptsize] {是} (unified);
+    \draw[arrow] (agree) -- node[above right, font=\scriptsize] {否} (divergent);
 
     \draw[arrow] (unified) |- (output);
     \draw[arrow] (divergent) |- (output);
@@ -228,7 +229,7 @@
     \label{fig:pipeline}
 \end{figure}      
 
-系统最终通过前端页面展示完整检测结果，包含以下5部分：
+系统最终通过前端页面展示完整检测结果，包含以下4部分：
 \begin{itemize}
     \item 机器学习模型的输出判断及其置信度；
     \item 大语言模型对于输入文本的独立输出判断；
@@ -238,33 +239,29 @@
 
 \subsection{核心代码分析}
 
-本项目代码位于 \code{src/} 目录下，按功能划分为数据处理、模型定义与推理、训练流程、RAG检索、LLM多阶段分析和前端集成六个模块。以下逐一分析各模块的核心实现。
+经过工程重构后，项目不再将训练、推理、RAG与Web逻辑平铺在\code{src/}根目录，而是形成\code{src/model/}、\code{src/rag/}、\code{src/web/}和\code{src/cli/}四个职责清晰的子包。仓库根目录的\code{main.py}作为统一入口。
 
-\subsubsection{数据处理模块 —— \code{src/data.py}}
+\subsubsection{统一入口与配置 —— \code{main.py}、\code{src/config.py}}
 
-数据处理模块负责读取\code{train.csv}和\code{val.csv}，并完成文本清洗、标签校验、重复样本和冲突样本处理。\code{load\_datasets()}调用\code{\_clean\_split()}分别清洗训练集与验证集，并额外删除训练集与验证集之间的重叠文本，降低数据泄漏风险。\code{TweetDataset}负责将清洗后的文本封装为PyTorch数据集，在\code{\_\_getitem\_\_()}中调用tokenizer生成\code{input\_ids}、\code{attention\_mask}和\code{labels}，供模型训练与验证使用。
+\code{main.py}通过子命令统一提供\code{serve}、\code{train}、\code{evaluate}、\code{predict}、\code{prepare-data}、\code{plot-history}和\code{rag query}等功能，并对端口、epoch和正整数参数进行集中校验。
 
-\subsubsection{模型定义与推理 —— \code{src/model.py}、\code{src/predict.py}}
+Web服务可通过\code{-{}-no-rag}、\code{-{}-no-llm}和\code{-{}-mock-model}显式控制可选组件；使用Uvicorn热重载时，运行参数通过环境变量传递给工作进程。模型、数据与训练参数统一定义在\code{configs/bertweet.yaml}中，LLM密钥及RAG运行选项由\code{.env}提供；\code{pyproject.toml}则作为依赖和命令行入口的唯一规范来源。
 
-模型基于Hugging Face的\code{AutoModelForSequenceClassification}实现，分类头输出2类概率。\code{model.py}采用懒加载方式，在首次调用\code{classify\_statement()}时加载\code{checkpoints/bertweet/best\_model/}中的最佳模型和分词器，并切换到\code{eval()}模式。推理时系统先对输入文本进行规范化和编码，再在\code{torch.no\_grad()}下前向传播，对logits做softmax，返回预测标签和置信度。\code{predict.py}提供命令行预测接口，便于离线测试。
+\subsubsection{数据处理模块 —— \code{src/model/data.py}}
 
-\subsubsection{训练流程 —— \code{src/train.py}}
+数据处理模块支持CSV和Parquet格式，负责文本规范化、标签校验、重复样本和冲突样本处理。\code{load\_}\code{datasets()}首先读取主训练集与验证集，再按配置合并\code{all\_}\code{extra.parquet}等扩展数据，并将各阶段统计写入\code{cleaning\_}\code{report.json}。若本地数据不存在，\code{resolve\_data\_path()}会根据\code{configs/bertweet.yaml}中的文件映射从Hugging Face数据仓库下载并复用缓存。当前实现会统计训练集与验证集的重叠文本并写入报告，但保持验证集本身不变。\code{TweetDataset}在\code{\_\_getitem\_\_()}中调用tokenizer生成\code{input\_ids}、\code{attention\_mask}和\code{labels}，供训练与评估使用。
+
+\subsubsection{模型推理 —— \code{src/model/inference.py}、\code{src/cli/predict.py}}
+
+模型仍通过Hugging Face自动序列分类接口实现，分类头输出2类概率。\code{inference.py}采用线程锁保护的懒加载：首次收到分类请求时，系统优先检查配置指定的本地最佳checkpoint目录，本地检查点缺失时再从Hugging Face模型仓库解析完整checkpoint。加载完成后模型切换到\code{eval()}模式，并在\code{torch.no\_grad()}下对logits执行softmax，返回标签与置信度。为避免基础设施故障产生看似可信的随机结论，checkpoint不可用时系统会明确报错；模拟分类器仅在用户显式传入\code{-{}-mock-model}时启用。\code{src/cli/predict.py}提供相同配置下的离线单条预测和JSON输出。
+
+\subsubsection{训练与评估 —— \code{src/model/pipeline.py}、\code{src/cli/}}
 
 训练脚本完成模型微调、验证评估和最佳模型保存。优化器使用AdamW，学习率为\code{1e-5}，并配合线性预热衰减调度。训练过程中每个epoch后在验证集上计算accuracy和macro-F1，并以macro-F1作为early stopping指标；当指标连续若干轮未提升时停止训练，保存最佳模型、tokenizer和训练指标。\code{plot\_history.py}用于生成训练曲线，辅助分析过拟合情况。
 
-\subsubsection{RAG检索增强 —— \code{src/rag\_service.py}}
+\subsubsection{RAG检索增强 —— \code{src/rag/service.py}、\code{src/rag/retriever.py}}
 
-RAG模块用于为LLM解释提供参考证据。\code{retrieve\_rag\_evidence()}动态调用\code{RAG/chroma\_retriever.py}中的\code{ChromaRetriever}，从本地ChromaDB中检索Top-k相似证据，并返回来源、标签、距离和文本内容。RAG不直接参与BERTweet分类；若数据库缺失或依赖异常，函数返回空列表，保证主检测流程仍可运行。
-
-\subsubsection{LLM多阶段分析 —— \code{src/api\_service.py}}
-
-LLM分析模块是整个系统可解释性的核心，实现了三阶段提示工程管道：
-
-LLM模块采用三阶段分析。第一阶段\code{judge\_statement()}结合输入文本和RAG证据进行独立判断，并输出结构化JSON；第二阶段\code{compare\_results()}比较ML与LLM结果是否一致；第三阶段\code{analyze\_root\_cause()}根据一致或分歧情况生成统一解释或根因分析。为了提高稳定性，\code{\_parse\_json()}对LLM返回结果进行容错解析，尽量从普通JSON、Markdown代码块或文本片段中提取结构化字段。
-
-\subsubsection{FastAPI前端集成 —— \code{src/app.py}}
-
-\code{app.py}使用FastAPI组织完整流程。\code{/analyze}端点依次调用BERTweet分类、RAG检索、LLM独立判断、结果比较和根因分析，并将ML Verdict、LLM Verdict、Confidence、Reasoning、Comparison和RAG Evidence传入Jinja2模板。前端页面最终展示检测结果、解释文本和检索证据，如图\ref{fig:frontend}所示。
+RAG模块用于为LLM解释提供参考证据。检索服务通过进程内缓存的检索器从多个collection查询Top-k相似证据，统一标签语义后返回来源、原始标签、归一化标签、距离和文本。系统优先使用配置指定的本地ChromaDB目录；若其不存在，则由\code{src/rag/config.py}从Hugging Face仓库下载压缩包，进行路径安全检查后解压并复用。\code{src/rag/build\_index.py}会先验证并加载全部数据源，在临时目录中完成新索引，再替换现有数据库，避免构建失败破坏可用索引。RAG不直接参与BERTweet分类；下载、依赖或检索异常时Web流程返回空证据并继续运行。
 
 \begin{figure}[H]
     \centering
@@ -272,6 +269,16 @@ LLM模块采用三阶段分析。第一阶段\code{judge\_statement()}结合输�
     \caption{前端页面展示示例}
     \label{fig:frontend}
 \end{figure}
+
+\subsubsection{LLM多阶段分析 —— \code{src/web/llm\_service.py}}
+
+LLM分析模块是整个系统可解释性的核心，实现了三阶段提示工程管道：
+
+LLM模块采用三阶段分析。第一阶段\code{judge\_statement()}结合输入文本和RAG证据进行独立判断，并输出结构化JSON；第二阶段\code{compare\_results()}比较ML与LLM结果是否一致；第三阶段\code{analyze\_root\_cause()}根据一致或分歧情况生成统一解释或根因分析。为了提高稳定性，\code{\_parse\_json()}对LLM返回结果进行容错解析，尽量从普通JSON、Markdown代码块或文本片段中提取结构化字段。
+
+\subsubsection{FastAPI前端集成 —— \code{src/web/app.py}}
+
+\code{src/web/app.py}以应用工厂组织完整流程，\code{/analyze}端点依次调用BERTweet分类、RAG检索、LLM独立判断、结果比较和根因分析，并将ML Verdict、LLM Verdict、Confidence、Reasoning、Comparison和RAG Evidence传入Jinja2模板。前端页面最终展示检测结果、解释文本和检索证据，如图\ref{fig:frontend}所示。
 
 \subsection{检测结果分析}
 
@@ -411,13 +418,13 @@ LLM会从可验证性、信源可信度、逻辑连贯性、情绪化语言和�
 
 \section{工作总结}
 \subsection{收获与心得}
-通过本项目，我们完整实践了一个AI应用系统的设计与实现过程，包括数据处理、预训练模型微调、模型评估、RAG检索增强、大语言模型API调用和前端展示。项目加深了我们对Transformer文本分类模型、RAG检索机制和可解释AI系统设计的理解。
+通过本项目，我们完整实践了一个AI应用系统的设计与实现过程，包括数据处理、预训练模型微调、模型评估、RAG检索增强、大语言模型API调用和前端展示。后期工程重构进一步统一了配置、依赖与命令行入口，并通过按领域拆分子包、延迟加载外部资产、兼容旧导入路径和补充回归测试，提高了系统的可维护性、可复现性与协作开发效率。项目加深了我们对Transformer文本分类模型、RAG检索机制和可解释AI系统设计的理解。
 
 \subsection{问题与解决}
 项目过程中主要遇到三个问题。
 \begin{enumerate}
     \item 数据集规模较小，BERTweet型训练过多轮后容易过拟合。对此，我们采用验证集macro-F1作为早停指标，并保存最佳模型。
-    \item RAG数据库较大且检索相关性存在波动，因此数据库通过GitHub Release提供，系统将RAG作为可选解释增强模块接入，保证主系统稳定运行。
+    \item 模型checkpoint、训练数据与RAG数据库体积较大，不适合直接提交到Git仓库。对此，我们将这些资产托管在Hugging Face，采用本地优先、缺失时自动下载并缓存的策略；RAG仍作为可选解释增强模块接入，保证外部资产不可用时主系统可以明确降级。
     \item LLM解释可能与小模型分类结果不一致。对此，我们设计了多阶段分析流程，将小模型判断、LLM判断和分歧分析分开展示。
 \end{enumerate}
 
