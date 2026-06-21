@@ -286,7 +286,7 @@ LLM模块采用三阶段分析。第一阶段\code{judge\_statement()}结合输�
 
 实验结果显示，模型在第 5 个 epoch 取得最佳验证集表现：accuracy 为 0.8700，macro-F1 为 0.8688，验证集 loss 为 0.3696。早停机制在第 7 个 epoch 后触发，系统最终保存第 5 轮 macro-F1 最优的模型权重作为最终检测模型。
 
-图3、图4与图5分别展示验证集 accuracy、macro-F1 以及训练/验证 loss 随 epoch 的变化。从曲线可见，accuracy 与 macro-F1 在前 5 轮持续上升，第 5 轮达到峰值后回落并趋于稳定；训练 loss 从 0.6735 下降到 0.1256，说明模型持续拟合训练集，而验证 loss 在第 5 轮降至 0.3696 后开始反弹（第 6 轮 0.4160，第 7 轮 0.4208），训练 loss 与验证 loss 的差距扩大，呈现典型过拟合特征。因此，采用 early stopping 能在性能峰值处保存模型，避免继续训练导致泛化能力下降。
+图\ref{fig:accuracy_curve}、图\ref{fig:f1_curve}与图\ref{fig:loss_curve}分别展示验证集 accuracy、macro-F1 以及训练/验证 loss 随 epoch 的变化。从曲线可见，accuracy 与 macro-F1 在前 5 轮持续上升，第 5 轮达到峰值后回落并趋于稳定；训练 loss 从 0.6735 下降到 0.1256，说明模型持续拟合训练集，而验证 loss 在第 5 轮降至 0.3696 后开始反弹（第 6 轮 0.4160，第 7 轮 0.4208），训练 loss 与验证 loss 的差距扩大，呈现典型过拟合特征。因此，采用 early stopping 能在性能峰值处保存模型，避免继续训练导致泛化能力下降。
 
 \begin{figure}[H]
     \centering
