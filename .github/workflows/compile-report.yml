@@ -1,0 +1,47 @@
+name: Compile LaTeX Report
+
+on:
+  push:
+    branches: [main, report]
+    paths:
+      - 'report/**'
+      - '.github/workflows/compile-report.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'report/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install TeX Live
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            texlive-latex-base \
+            texlive-latex-recommended \
+            texlive-latex-extra \
+            texlive-fonts-recommended \
+            texlive-fonts-extra \
+            texlive-lang-chinese \
+            texlive-science \
+            texlive-publishers \
+            texlive-xetex
+
+      - name: Compile report
+        working-directory: report
+        run: |
+          xelatex -interaction=nonstopmode report.tex
+          xelatex -interaction=nonstopmode report.tex
+
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: report
+          path: report/report.pdf
