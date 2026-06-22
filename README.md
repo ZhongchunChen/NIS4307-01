@@ -1,18 +1,24 @@
-# Rumor Detection System
+# 🔎 Rumor Detection System
 
 > **NIS4307: Introduction to Artificial Intelligence** — Course Project by Group 4, Shanghai Jiao Tong University.
 
-**Authors**:
+**👥 Authors**:
 * Zhongchun Chen [@ZhongchunChen](https://github.com/ZhongchunChen)
 * Runze Shen [@RanceChen06](https://github.com/RanceChen06)
 * Mingchen Dai [@MingchenDai](https://github.com/MingchenDai)
 * Zihao Xie [@Zihao-Xie090](https://github.com/Zihao-Xie090)
 
-**Docs**: For Chinese docs, go to [中文文档](docs/README_CN.md).
+**📚 Docs**: For Chinese docs, go to [中文文档](docs/README_CN.md).
 
-**Final Report**: The $\LaTeX$ source code (`report.tex`) and the compiled document (`report.pdf`) are located in the `/report` directory. Please ensure you are referencing the **latest** commit on the main branch for the most up-to-date version.
+**📄 Final Report**: The $\LaTeX$ source code (`report.tex`) and the compiled document (`report.pdf`) are located in the `/report` directory. Please ensure you are referencing the **latest** commit on the main branch for the most up-to-date version.
 
-**Table of Contents**:
+**🤗 Hugging Face Resources**:
+
+- [Model checkpoint](https://huggingface.co/PocketChen/SJTU_NIS4307_intro2ai_bertweet)
+- [Extra training datasets](https://huggingface.co/datasets/PocketChen/SJTU_NIS4307_intro2ai_datasets)
+- [Dataset for RAG](https://huggingface.co/datasets/MingchenDai/NIS4307-ChromaDB_data_populate)
+
+**📑 Table of Contents**:
 1. [Overview](#overview)
 2. [Setup](#setup)
 3. [Prepare the Model](#prepare-the-model)
@@ -22,13 +28,13 @@
 7. [Project Structure](#project-structure)
 8. [Command Summary](#command-summary)
 
-## Overview
+## 🎯 Overview
 
 The Rumor Detection System classifies English statements using a fine-tuned BERTweet model. Its web interface can optionally retrieve related evidence from ChromaDB and use an OpenAI-compatible LLM to explain the prediction, compare ML and LLM verdicts, and analyze agreement or divergence.
 
 The components remain independent where practical. Training and evaluation require only the ML model, while LLM and RAG support can be enabled for the complete interactive demo. Detailed architecture, experiments, and technical analysis are provided in the [final report](report/report.pdf) and documents under `docs/`.
 
-## Setup
+## ⚙️ Setup
 
 Conda with Python 3.10 is the recommended environment:
 
@@ -54,7 +60,7 @@ python -m pip install -e .
 
 On Windows PowerShell, activate it with `\.venv\Scripts\Activate.ps1`.
 
-## Prepare the Model
+## 🤖 Prepare the Model
 
 > **Using the provided checkpoint:** Local training is optional. If no trained
 > checkpoint is available locally, the configured fine-tuned model is downloaded
@@ -84,11 +90,11 @@ python main.py train
 
 The pretrained `vinai/bertweet-base` model is cached under `checkpoints/base/`. The best checkpoint is selected by validation macro-F1 and saved under `checkpoints/bertweet/best_model/`. Metrics, training history, and plots are written to `outputs/bertweet/`.
 
-## Optional LLM and RAG Configuration
+## 🧠 Optional LLM and RAG Configuration
 
 This section is required only for the complete explanatory demo. ML-only display and evaluation do not require an API key or RAG database.
 
-### Configure the LLM
+### 💬 Configure the LLM
 
 Copy the environment template:
 
@@ -106,7 +112,7 @@ API_SECRET=your-api-key
 API_MODEL=deepseek-reasoner
 ```
 
-### Enable RAG
+### 🔍 Enable RAG
 
 > **Using the provided RAG database:** No manual database setup is required. If
 > the local database is missing, the configured archive is downloaded from
@@ -122,7 +128,7 @@ If it is missing, `ChromaDB_data_populate.zip` is downloaded from the configured
 
 RAG is optional. If the database cannot be downloaded or loaded, the web application continues without retrieved evidence.
 
-## Run the Web Demo
+## 🌐 Run the Web Demo
 
 Before starting, ensure the environment is active and a real checkpoint is available if you intend to inspect meaningful ML predictions.
 
@@ -142,7 +148,7 @@ python main.py serve --no-llm --no-rag
 
 > **Checkpoint behavior:** The locally trained `checkpoints/bertweet/best_model/` is preferred. If it is missing, the configured Hugging Face checkpoint is downloaded and cached. If neither checkpoint can be resolved, the web interface reports a classification error. Synthetic predictions are available only with `python main.py serve --mock-model`.
 
-## Evaluate a Custom Test Dataset
+## 📊 Evaluate a Custom Test Dataset
 
 This workflow supports evaluation on self-created data for the course grading policy. It uses only the trained BERTweet checkpoint and does not call the LLM API or RAG module.
 
@@ -175,7 +181,7 @@ python main.py evaluate \
 
 The command prints macro-F1, accuracy, and the confusion matrix. Without `--output`, custom-test results are saved to `outputs/bertweet/test_metrics.json`.
 
-## Project Structure
+## 🗂️ Project Structure
 
 ```text
 configs/        Model and training configuration
@@ -190,7 +196,7 @@ tests/          CLI and configuration regression tests
 main.py         Unified command-line entry point
 ```
 
-### Legacy Import Compatibility
+### 🔄 Legacy Import Compatibility
 
 Temporary forwarding modules keep collaborator branches using the previous layout working. They emit `DeprecationWarning`; new code should use the canonical paths below.
 
@@ -205,7 +211,7 @@ Temporary forwarding modules keep collaborator branches using the previous layou
 
 The wrappers contain no implementation logic and can be removed after active collaborator branches migrate to the canonical imports.
 
-## Command Summary
+## 💻 Command Summary
 
 | Command | Purpose |
 | --- | --- |
@@ -223,7 +229,7 @@ python main.py --help
 python main.py COMMAND --help
 ```
 
-## Technical Documentation
+## 📖 Technical Documentation
 
 - [Machine learning model](docs/model.md): BERTweet architecture, data preparation, training, evaluation, prediction, and generated artifacts
 - [Frontend](docs/frontend.md): FastAPI/Jinja architecture, analysis workflow, environment setup, and ML interface contract
